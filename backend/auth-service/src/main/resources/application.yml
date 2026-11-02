@@ -1,0 +1,67 @@
+server:
+  port: ${AUTH_PORT:8081}
+
+spring:
+  application:
+    name: auth-service
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sutra_db}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+    hikari:
+      # Native SQL (e.g. the RFQ number sequence) resolves in this service schema too
+      schema: auth
+      maximum-pool-size: 5
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+      "[hibernate.default_schema]": auth
+  flyway:
+    enabled: true
+    schemas: auth
+    default-schema: auth
+    # The SQL in /database/auth is the single source of truth for this service's schema.
+    locations: ${AUTH_MIGRATIONS:filesystem:../../database/auth}
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+    jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+    public-paths: /api/auth/login
+  auth:
+    bootstrap-admin:
+      username: ${SUTRA_ADMIN_USERNAME:admin}
+      password: ${SUTRA_ADMIN_PASSWORD:Admin@123}
+      email: ${SUTRA_ADMIN_EMAIL:admin@sutra.local}
+    # Sign-in is locked for lockout-minutes after this many consecutive failures.
+    max-failed-logins: ${SUTRA_MAX_FAILED_LOGINS:5}
+    lockout-minutes: ${SUTRA_LOCKOUT_MINUTES:15}
+  services:
+    masterdata: ${MASTERDATA_URL:http://localhost:8082}
+    procurement: ${PROCUREMENT_URL:http://localhost:8083}
+    audit: ${AUDIT_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    correlation: "[%X{requestId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

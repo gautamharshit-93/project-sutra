@@ -1,0 +1,15 @@
+* text=auto
+*.ps1 text eol=crlf
+*.sh text eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.xlsx binary
+*.docx binary
+*.zip binary
+*.jar binary
+*.woff binary
+*.woff2 binary

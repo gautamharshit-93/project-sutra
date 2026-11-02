@@ -1,0 +1,83 @@
+server:
+  port: ${PROCUREMENT_PORT:8083}
+
+spring:
+  application:
+    name: procurement-service
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sutra_db}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+    hikari:
+      # Native SQL (e.g. the RFQ number sequence) resolves in this service schema too
+      schema: procurement
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+      "[hibernate.default_schema]": procurement
+      "[hibernate.format_sql]": false
+  flyway:
+    enabled: true
+    schemas: procurement
+    default-schema: procurement
+    # The SQL in /database/procurement is the single source of truth for this service's schema.
+    locations: ${PROCUREMENT_MIGRATIONS:filesystem:../../database/procurement}
+  servlet:
+    multipart:
+      max-file-size: ${SUTRA_MAX_FILE_MB:20}MB
+      max-request-size: ${SUTRA_MAX_REQUEST_MB:60}MB   # several files per quotation
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+  services:
+    masterdata: ${MASTERDATA_URL:http://localhost:8082}
+    audit: ${AUDIT_URL:http://localhost:8084}
+  files:
+    max-size-bytes: ${SUTRA_MAX_FILE_BYTES:20971520}
+  ai:
+    # Python document service (folder /ai): file-to-text, fuzzy matching and the rule-based reader
+    service-url: ${AI_SERVICE_URL:http://localhost:8000}
+    service-timeout-seconds: ${AI_SERVICE_TIMEOUT:60}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.8-flash}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:16000}
+      timeout-seconds: ${GEMINI_TIMEOUT:180}
+    review-confidence-threshold: 0.75
+    match-confidence-threshold: 0.6
+  # Extraction engines: GEMINI and RULES. Upload/retry may name one, or use AUTO, which tries engine-order and
+  # moves on when an engine is not configured or fails (e.g. a rate-limited free tier).
+  extraction:
+    engine-order: ${SUTRA_ENGINE_ORDER:GEMINI,RULES}
+    # Extractions run one at a time by default so free tiers are not hit with bursts.
+    concurrency: ${SUTRA_EXTRACTION_CONCURRENCY:1}
+    # Free Gemini models users can switch to; also tried in turn when GEMINI_MODEL is rate-limited.
+    gemini-fallback-models: ${GEMINI_FALLBACK_MODELS:gemini-3.5-flash-lite}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    correlation: "[%X{requestId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

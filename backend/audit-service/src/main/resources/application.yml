@@ -1,0 +1,58 @@
+server:
+  port: ${AUDIT_PORT:8084}
+
+spring:
+  application:
+    name: audit-service
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sutra_db}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+    hikari:
+      # Native SQL (e.g. the RFQ number sequence) resolves in this service schema too
+      schema: audit
+      maximum-pool-size: 5
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+      "[hibernate.default_schema]": audit
+  flyway:
+    enabled: true
+    schemas: audit
+    default-schema: audit
+    # The SQL in /database/audit is the single source of truth for this service's schema.
+    locations: ${AUDIT_MIGRATIONS:filesystem:../../database/audit}
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+  audit:
+    # The audit service stores events directly; it has nothing to relay.
+    outbox-relay: false
+  services:
+    audit: http://localhost:${AUDIT_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    correlation: "[%X{requestId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

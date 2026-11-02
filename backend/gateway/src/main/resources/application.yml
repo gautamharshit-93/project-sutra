@@ -1,0 +1,55 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: gateway
+  # Uploads are streamed straight through to the procurement service, never parsed here.
+  servlet:
+    multipart:
+      enabled: false
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+  gateway:
+    cors-allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+    auth-url: ${AUTH_URL:http://localhost:8081}
+    document-service-url: ${AI_SERVICE_URL:http://localhost:8000}
+    # How long a user's active/version state is trusted before asking the auth service again.
+    token-check-cache-seconds: 15
+    # Cross-checking a quotation with every engine can take minutes.
+    request-timeout-seconds: 600
+    # First match wins: the audit service serves the history paths before procurement's general routes.
+    routes:
+      - service: auth service
+        url: ${AUTH_URL:http://localhost:8081}
+        paths: [/api/auth/**, /api/users/**]
+      - service: master data service
+        url: ${MASTERDATA_URL:http://localhost:8082}
+        paths: [/api/entities/**, /api/customers/**, /api/vendors/**]
+      - service: audit service
+        url: ${AUDIT_URL:http://localhost:8084}
+        paths: [/api/audit-logs/**, /api/purchase-requests/*/history, /api/quotations/*/history]
+      - service: procurement service
+        url: ${PROCUREMENT_URL:http://localhost:8083}
+        paths: [/api/purchase-requests/**, /api/quotations/**, /api/comparisons/**, /api/dashboard/**,
+                /api/extraction-engines/**, /api/vendor-portal/**]
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  pattern:
+    correlation: "[%X{requestId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

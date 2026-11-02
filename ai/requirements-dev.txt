@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest==9.2.0
+# Starlette 1.x's TestClient uses httpx2 (plain httpx is deprecated there)
+httpx2==2.16.0
+# builds sample PDF quotations for the tests
+reportlab==5.1.0

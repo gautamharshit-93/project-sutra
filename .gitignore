@@ -1,0 +1,25 @@
+# build output
+target/
+dist/
+build/
+*.class
+*.jar
+# dependencies
+node_modules/
+.venv/
+venv/
+# python caches
+__pycache__/
+.pytest_cache/
+*.pyc
+# logs
+*.log
+logs/
+# local secrets
+.env
+.env.*
+*.local
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/

@@ -1,0 +1,37 @@
+{
+  "name": "sutra-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Project SUTRA - Vendor Quotation Management System (React UI)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@react-three/fiber": "8.18.0",
+    "axios": "1.21.0",
+    "framer-motion": "14.9.0",
+    "gsap": "3.15.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.6",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "27.4.0",
+    "vite": "6.4.5",
+    "vitest": "3.2.7"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

@@ -1,0 +1,95 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: sutra-backend
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sutra_db}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+      "[hibernate.format_sql]": false
+  flyway:
+    enabled: true
+    # The SQL in /database/migrations is the single source of truth for the schema.
+    locations: ${DB_MIGRATIONS:filesystem:../database/migrations}
+  servlet:
+    multipart:
+      max-file-size: ${SUTRA_MAX_FILE_MB:20}MB
+      max-request-size: ${SUTRA_MAX_REQUEST_MB:60}MB   # several files per quotation
+  # Jackson 3 (Spring Boot 4) writes java.time values as ISO-8601 strings. Null fields are kept in responses
+  # (e.g. "priceRank": null) so every API object has a stable shape.
+
+sutra:
+  security:
+    # Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+    jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+    cors-allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+    # Sign-in is locked for lockout-minutes after this many consecutive failures.
+    max-failed-logins: ${SUTRA_MAX_FAILED_LOGINS:5}
+    lockout-minutes: ${SUTRA_LOCKOUT_MINUTES:15}
+  bootstrap-admin:
+    username: ${SUTRA_ADMIN_USERNAME:admin}
+    password: ${SUTRA_ADMIN_PASSWORD:Admin@123}
+    email: ${SUTRA_ADMIN_EMAIL:admin@sutra.local}
+  files:
+    max-size-bytes: ${SUTRA_MAX_FILE_BYTES:20971520}
+  ai:
+    # Python document-processing service (folder /ai)
+    service-url: ${AI_SERVICE_URL:http://localhost:8000}
+    service-timeout-seconds: ${AI_SERVICE_TIMEOUT:60}
+    # Gemini API (Google AI Studio key, free tier) - the first extraction engine.
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.8-flash}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:16000}
+      timeout-seconds: ${GEMINI_TIMEOUT:180}
+    review-confidence-threshold: 0.75
+    match-confidence-threshold: 0.6
+  # Switchable extraction engines. Upload/retry may name one (GEMINI, OPENAI, RULES) or use AUTO, which tries
+  # engine-order and moves on when an engine is not configured or fails (e.g. a rate-limited free tier).
+  extraction:
+    engine-order: ${SUTRA_ENGINE_ORDER:GEMINI,OPENAI,RULES}
+    # Extractions run one at a time by default so free tiers are not hit with bursts.
+    concurrency: ${SUTRA_EXTRACTION_CONCURRENCY:1}
+    # Each free Gemini model has its own rate limit: when GEMINI_MODEL is rate-limited, these are tried next.
+    gemini-fallback-models: ${GEMINI_FALLBACK_MODELS:gemini-3.5-flash-lite}
+    # Any OpenAI-compatible chat-completions API. Free options: Groq (default, key from console.groq.com),
+    # OpenRouter (https://openrouter.ai/api/v1 with a ":free" model), or a local Ollama
+    # (http://localhost:11434/v1, no key). Disabled until OPENAI_MODEL is set.
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.groq.com/openai/v1}
+      model: ${OPENAI_MODEL:}
+      max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:8000}
+      timeout-seconds: ${OPENAI_TIMEOUT:180}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    # Every log line carries the request id that is also returned to the client.
+    correlation: "[%X{requestId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

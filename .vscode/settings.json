@@ -1,0 +1,12 @@
+{
+    // Spring 6 declares package-level @NonNullApi; Eclipse JDT's annotation null analysis then reports
+    // false "Null type safety" warnings on ordinary code. javac and the test suite are the source of truth.
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.configuration.updateBuildConfiguration": "automatic",
+    // Use the AI service's virtual environment so installed packages resolve.
+    "python.defaultInterpreterPath": "${workspaceFolder}/ai/.venv/Scripts/python.exe",
+    "python.analysis.extraPaths": ["${workspaceFolder}/ai"],
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}/ai",
+    "python.testing.pytestArgs": ["tests"]
+}
