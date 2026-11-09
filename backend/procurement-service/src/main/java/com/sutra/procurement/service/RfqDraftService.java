@@ -52,8 +52,10 @@ public class RfqDraftService {
             prices; ignore any prices.
             - requiredBy: the date the goods are needed, as YYYY-MM-DD. If the RFQ only gives a period (e.g. \
             "within 30 days"), compute it from today's date and add a warning saying so.
+            - quotationsDue: the last date for vendors to send their quotation (e.g. "quotation due date", \
+            "submit by"), as YYYY-MM-DD; null when not stated.
             - description: 1-3 sentences with the purpose, delivery place and any stated terms (payment, \
-            delivery, quotation due date).
+            delivery).
             - buyerName: the company, plant or department issuing the RFQ; customerName: the end customer only \
             if one is named. Use null for anything not stated; never invent values.
             - warnings: anything the buyer should check, e.g. a line with no quantity or unit.
@@ -194,17 +196,27 @@ public class RfqDraftService {
         }
         String currency = text(root, "currency");
         currency = currency != null && currency.trim().matches("(?i)[a-z]{3}") ? currency.trim().toUpperCase(Locale.ROOT) : null;
-        String requiredBy = text(root, "requiredBy");
-        if (requiredBy != null) {
-            try {
-                requiredBy = LocalDate.parse(requiredBy.trim()).toString();
-            } catch (DateTimeParseException e) {
-                warnings.add("The required-by date \"" + clip(requiredBy, 40) + "\" could not be read: set it below.");
-                requiredBy = null;
-            }
+        String requiredBy = date(text(root, "requiredBy"), "required-by date", warnings);
+        String quotationsDue = date(text(root, "quotationsDue"), "quotation due date", warnings);
+        if (quotationsDue != null && requiredBy != null && quotationsDue.compareTo(requiredBy) > 0) {
+            warnings.add("Quotations are due after the required-by date: check both dates.");
         }
         return new RfqDraft(title, clip(text(root, "description"), 4000), requiredBy, currency,
-                clip(text(root, "buyerName"), 200), clip(text(root, "customerName"), 200), items, warnings, source);
+                clip(text(root, "buyerName"), 200), clip(text(root, "customerName"), 200), items, warnings, source,
+                quotationsDue);
+    }
+
+    /** YYYY-MM-DD, or null with a warning when the model's value is not a date. */
+    private static String date(String value, String label, List<String> warnings) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim()).toString();
+        } catch (DateTimeParseException e) {
+            warnings.add("The " + label + " \"" + clip(value, 40) + "\" could not be read: set it below.");
+            return null;
+        }
     }
 
     private static String text(JsonNode node, String field) {

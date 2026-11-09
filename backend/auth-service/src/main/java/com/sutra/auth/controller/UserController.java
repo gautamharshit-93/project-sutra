@@ -4,7 +4,9 @@ import com.sutra.auth.request.UserRequest;
 import com.sutra.common.web.PageResponse;
 import com.sutra.auth.response.UserResponses.RoleResponse;
 import com.sutra.auth.response.UserResponses.UserResponse;
+import com.sutra.auth.response.UserResponses.VendorSignupResponse;
 import com.sutra.auth.service.UserService;
+import com.sutra.auth.service.VendorSignupService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -27,9 +29,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final VendorSignupService signups;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, VendorSignupService signups) {
         this.userService = userService;
+        this.signups = signups;
     }
 
     @GetMapping
@@ -42,6 +46,25 @@ public class UserController {
     @GetMapping("/roles")
     public List<RoleResponse> roles() {
         return userService.roles();
+    }
+
+    /** Vendors that signed up on the portal and wait for approval. */
+    @GetMapping("/vendor-signups")
+    public List<VendorSignupResponse> vendorSignups() {
+        return signups.pending();
+    }
+
+    /** One click: creates the vendor in master data, links the login and activates it. */
+    @PostMapping("/{id}/approve-vendor")
+    public UserResponse approveVendor(@PathVariable Long id) {
+        return signups.approve(id);
+    }
+
+    /** Rejects a sign-up: the waiting login and its details are deleted. */
+    @DeleteMapping("/{id}/vendor-signup")
+    public ResponseEntity<Void> rejectVendor(@PathVariable Long id) {
+        signups.reject(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

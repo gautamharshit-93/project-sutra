@@ -41,6 +41,7 @@ public final class RfqDraftSchema {
                 "title", prop("string", "Short title of what is being bought (max 120 characters)"),
                 "description", nullable("string", "1-3 sentences: purpose, delivery place and stated terms"),
                 "requiredBy", nullable("string", "Date the goods are needed, YYYY-MM-DD"),
+                "quotationsDue", nullable("string", "Last date for vendors to send quotations, YYYY-MM-DD"),
                 "currency", nullable("string", "ISO 4217 currency code if stated, e.g. INR"),
                 "buyerName", nullable("string", "Company, plant or department issuing the RFQ"),
                 "customerName", nullable("string", "End customer the goods are for, if stated"),

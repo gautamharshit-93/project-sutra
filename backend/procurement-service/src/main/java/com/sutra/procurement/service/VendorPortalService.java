@@ -55,12 +55,14 @@ public class VendorPortalService {
     private final MasterDataClient masterData;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final java.time.Clock clock;
 
     public VendorPortalService(PurchaseRequestRepository purchaseRequestRepository,
                                QuotationRepository quotationRepository, QuotationFileRepository fileRepository,
                                ApprovalRepository approvalRepository, QuotationService quotationService,
                                MasterDataClient masterData, CurrentUserProvider currentUser,
-                               AuditService auditService) {
+                               AuditService auditService, java.time.Clock clock) {
+        this.clock = clock;
         this.purchaseRequestRepository = purchaseRequestRepository;
         this.quotationRepository = quotationRepository;
         this.fileRepository = fileRepository;
@@ -81,9 +83,9 @@ public class VendorPortalService {
                     .findFirst().orElse(null);
             return new RfqSummary(pr.getId(), pr.getRequestNumber(), pr.getTitle(), pr.getEntity().getName(),
                     pr.getCurrency(), pr.getRequiredBy(), pr.getItems().size(),
-                    pr.getStatus() == PurchaseRequestStatus.OPEN, pr.getCreatedAt(),
+                    pr.acceptsVendorQuotations(java.time.LocalDate.now(clock)), pr.getCreatedAt(),
                     mine == null ? null : mine.getId(), mine == null ? null : Stage.of(mine.getStatus()),
-                    mine == null ? null : outcome(mine));
+                    mine == null ? null : outcome(mine), pr.getQuotationsDue());
         });
     }
 
@@ -92,7 +94,7 @@ public class VendorPortalService {
         Long vendorId = vendorId();
         PurchaseRequest pr = visibleRfq(rfqId, vendorId);
         return RfqDetail.of(pr, quotationRepository.findByPurchaseRequestIdAndVendorId(rfqId, vendorId).stream()
-                .map(this::toVendorQuotation).toList());
+                .map(this::toVendorQuotation).toList(), java.time.LocalDate.now(clock));
     }
 
     @Transactional(readOnly = true)
@@ -107,6 +109,10 @@ public class VendorPortalService {
                 .orElseThrow(() -> new PurchaseRequestNotFoundException(rfqId));
         if (pr.getStatus() != PurchaseRequestStatus.OPEN) {
             throw new BusinessRuleException("RFQ_CLOSED", pr.getRequestNumber() + " is no longer accepting quotations");
+        }
+        if (!pr.acceptsVendorQuotations(java.time.LocalDate.now(clock))) {
+            throw new BusinessRuleException("RFQ_DUE_DATE_PASSED", "Quotations for " + pr.getRequestNumber()
+                    + " were due by " + pr.getQuotationsDue() + "; the buyer no longer accepts new ones");
         }
         if (!quotationRepository.findByPurchaseRequestIdAndVendorId(rfqId, vendorId).isEmpty()) {
             throw new DuplicateResourceException("You have already submitted a quotation for " + pr.getRequestNumber()

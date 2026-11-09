@@ -112,7 +112,7 @@ class ComparisonServiceTest {
 
     @Test
     void viewerCannotGenerateComparisons() {
-        when(currentUser.requirePrincipal()).thenReturn(Fixtures.principal(99L, RoleName.AUDITOR));
+        when(currentUser.requirePrincipal()).thenReturn(Fixtures.principal(99L, RoleName.APPROVER));
 
         assertThatThrownBy(() -> service.generate(pr.getId())).isInstanceOf(ForbiddenOperationException.class);
     }

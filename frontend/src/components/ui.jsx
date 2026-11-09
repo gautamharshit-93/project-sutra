@@ -61,22 +61,28 @@ export function Field({ label, error, hint, required, children, wide }) {
   );
 }
 
-export function Modal({ title, onClose, children, footer, size }) {
+/** `dismissible={false}`: no close button, Escape and clicks outside do nothing (the user must finish the form). */
+export function Modal({ title, onClose, children, footer, size, dismissible = true }) {
   const dialogRef = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  // Focus the first field once, when the dialog opens: re-renders of the page behind it must not move the cursor.
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', onKey);
     dialogRef.current?.querySelector('input, select, textarea, button')?.focus();
+  }, []);
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && dismissible && closeRef.current();
+    document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [dismissible]);
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onMouseDown={(e) => dismissible && e.target === e.currentTarget && onClose()}>
       <div className={`modal${size === 'large' ? ' modal-large' : ''}`} role="dialog" aria-modal="true"
            aria-label={title} ref={dialogRef}>
         <header className="modal-header">
           <h2>{title}</h2>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>×</button>
+          {dismissible && <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>×</button>}
         </header>
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-footer">{footer}</footer>}

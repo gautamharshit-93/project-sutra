@@ -1,10 +1,10 @@
 package com.sutra.common.security;
 
 /**
- * ADMIN manages everything; PROCUREMENT (buyer) runs RFQs; APPROVER (manager) awards them; AUDITOR reads
- * everything; VENDOR is a supplier's login that only sees open RFQs and its own quotations.
- * SERVICE is never stored: it marks the short-lived tokens SUTRA services use to call each other.
+ * ADMIN can do everything; PROCUREMENT (buyer) does the company's work: entities, customers, RFQs, quotations and
+ * comparisons; VENDOR (one login per supplier, self-registered) quotes on open RFQs; APPROVER (manager) awards or
+ * rejects. SERVICE is only for service-to-service calls.
  */
 public enum RoleName {
-    ADMIN, PROCUREMENT, APPROVER, AUDITOR, VENDOR, SERVICE
+    ADMIN, PROCUREMENT, APPROVER, VENDOR, SERVICE
 }

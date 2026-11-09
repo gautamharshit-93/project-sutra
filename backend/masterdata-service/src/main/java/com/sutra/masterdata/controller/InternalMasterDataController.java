@@ -11,7 +11,11 @@ import com.sutra.masterdata.service.BusinessEntityService;
 import com.sutra.masterdata.service.CustomerService;
 import com.sutra.masterdata.service.VendorService;
 import org.springframework.transaction.annotation.Transactional;
+import com.sutra.masterdata.request.MasterDataRequests.VendorSignupRequest;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -81,6 +85,14 @@ public class InternalMasterDataController {
     public VendorSnapshot vendor(@PathVariable Long id) {
         Vendor v = vendorService.find(id);
         return new VendorSnapshot(v.getId(), v.getCode(), v.getName(), v.isActive());
+    }
+
+    /** The auth service creates the vendor when an administrator approves a portal sign-up. */
+    @PostMapping("/vendors")
+    @Transactional
+    public VendorSnapshot registerVendor(@Valid @RequestBody VendorSignupRequest request) {
+        var v = vendorService.register(request);
+        return new VendorSnapshot(v.id(), v.code(), v.name(), v.active());
     }
 
     @GetMapping("/stats")

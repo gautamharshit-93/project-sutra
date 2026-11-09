@@ -31,11 +31,14 @@ public class GatewayFilter extends OncePerRequestFilter {
     private final JwtCodec jwt;
     private final TokenStateCache tokenStates;
     private final ObjectMapper objectMapper;
+    private final PublicEndpointRateLimiter rateLimiter;
 
-    public GatewayFilter(JwtCodec jwt, TokenStateCache tokenStates, ObjectMapper objectMapper) {
+    public GatewayFilter(JwtCodec jwt, TokenStateCache tokenStates, ObjectMapper objectMapper,
+                         PublicEndpointRateLimiter rateLimiter) {
         this.jwt = jwt;
         this.tokenStates = tokenStates;
         this.objectMapper = objectMapper;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -44,6 +47,12 @@ public class GatewayFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (path.startsWith("/internal")) {
             error(response, path, 404, "Not Found", "NOT_FOUND", "No endpoint at this path");
+            return;
+        }
+        if (rateLimiter.isLimited(path) && !rateLimiter.tryAcquire(request.getRemoteAddr(), path)) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(rateLimiter.secondsToReset()));
+            error(response, path, 429, "Too Many Requests", "RATE_LIMITED", "Too many attempts from this computer ("
+                    + rateLimiter.perMinute() + " a minute). Try again in " + rateLimiter.secondsToReset() + " seconds.");
             return;
         }
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);

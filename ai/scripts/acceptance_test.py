@@ -170,12 +170,12 @@ def main():
     start("2. Users and roles: company logins and one vendor login per vendor")
     users = {}
     for username, roles, vendor in [(f"buyer{RUN}", ["PROCUREMENT"], None), (f"buyer2{RUN}", ["PROCUREMENT"], None),
-                                    (f"manager{RUN}", ["APPROVER"], None), (f"auditor{RUN}", ["AUDITOR"], None)] + \
+                                    (f"manager{RUN}", ["APPROVER"], None)] + \
                                    [(f"{c.lower()}{RUN}", ["VENDOR"], vendor_ids[c]) for c, *_ in VENDORS]:
         users[username] = admin.call("POST", "/users", {"username": username, "email": f"{username}@accept.example",
                                                         "fullName": username, "password": PASSWORD, "roles": roles,
                                                         "vendorId": vendor})
-    check("Buyer, second buyer, manager, auditor and 3 vendor logins created", len(users) == 7)
+    check("Buyer, second buyer, manager and 3 vendor logins created", len(users) == 6)
     check("Vendor login is linked to its vendor", users[f"vertex{RUN}"]["vendorName"].startswith("Vertex Auto"))
     status, body = admin.try_call("POST", "/users", {"username": f"novendor{RUN}", "email": f"nv{RUN}@x.example",
                                                      "fullName": "x", "password": PASSWORD, "roles": ["VENDOR"]})
@@ -185,7 +185,7 @@ def main():
                                                      "vendorId": vendor_ids["SHAKTI"]})
     check("Vendor login cannot also have a company role", status == 422, f"HTTP {status} {body.get('code')}")
     buyer, other_buyer = login(f"buyer{RUN}"), login(f"buyer2{RUN}")
-    manager, auditor = login(f"manager{RUN}"), login(f"auditor{RUN}")
+    manager = login(f"manager{RUN}")
     vendors = {c: login(f"{c.lower()}{RUN}") for c, *_ in VENDORS}
     status, _ = buyer.try_call("POST", "/vendors", {"code": f"NOPE{RUN}", "name": "x"})
     check("Non-admin cannot change master data", status == 403, f"HTTP {status}")
@@ -203,6 +203,19 @@ def main():
     check("Buyer creates the RFQ with 5 items and opens it", True, pr["requestNumber"])
     seen = vendors["SHAKTI"].call("GET", "/vendor-portal/rfqs?size=100")["content"]
     check("Vendor sees the open RFQ in the portal", any(r["id"] == pr["id"] for r in seen))
+    vb = vendors["SHAKTI"].call("GET", "/vendor-portal/badges")
+    check("Vendor's menu badge counts open RFQs it has not quoted on", vb["openToQuote"] >= 1, vb)
+    yesterday = (datetime.now().date().toordinal() - 1)
+    late = buyer.call("POST", "/purchase-requests/with-items", {
+        "request": {"title": f"Past-due RFQ {RUN}", "entityId": entity["id"], "currency": "INR",
+                    "quotationsDue": datetime.fromordinal(yesterday).date().isoformat()},
+        "items": [{"description": "Brake disc", "quantity": 10, "unitOfMeasure": "Nos"}], "open": True})
+    check("Buyer creates and opens an RFQ with its items in one step", late["status"] == "OPEN" and len(late["items"]) == 1,
+          late["requestNumber"])
+    status, body = vendors["SHAKTI"].try_upload(f"/vendor-portal/rfqs/{late['id']}/quotations",
+                                                [DATA / "Vendor_1_Shakti_Metals_Quotation.pdf"])
+    check("After the quotation due date the vendor portal refuses new quotations",
+          status == 422 and body.get("code") == "RFQ_DUE_DATE_PASSED", f"HTTP {status}: {body.get('message')}")
     status, _ = vendors["SHAKTI"].try_call("GET", "/purchase-requests")
     check("Vendor cannot use the company API", status == 403, f"HTTP {status}")
     status, _ = vendors["SHAKTI"].try_call("GET", "/vendors")
@@ -275,11 +288,12 @@ def main():
         matched = sorted(i["itemCode"] or "" for i in q["items"] if i["requestItemLineNumber"])
         check(f"{code}: read by {q['extractionSource']} ({q['status']}), all 5 materials matched to the RFQ",
               q["status"] in ("NEEDS_REVIEW", "READY_FOR_COMPARISON") and len(matched) == 5, ", ".join(matched))
-    for code, q in extracted.items():
-        cc = buyer.call("POST", f"/quotations/{q['id']}/cross-check?engines=RULES")["runs"][0]
-        got = Decimal(str(cc["calculatedGrandTotal"])) if cc["ok"] else None
-        check(f"{code}: rule-based reader (no AI) independently reaches the document total", got == EXPECTED[code],
-              f"{got:,} quality {cc['quality']['grade']}" if got is not None else cc["error"])
+    status, body = buyer.try_upload(f"/purchase-requests/{pr['id']}/quotations?vendorId={vendor_ids['SHAKTI']}",
+                                    [DATA / "Materials_Catalogue.xlsx"])
+    check("A second quotation for the same vendor is refused, also when the buyer uploads it",
+          status == 409 and "already has a quotation" in body.get("message", ""), f"HTTP {status}")
+    badges = buyer.call("GET", "/dashboard/badges")
+    check("The buyer's menu badge counts the RFQ as ready to compare", badges["rfqsToCompare"] >= 1, badges)
     q = extracted["SHAKTI"]
     item = next(i for i in q["items"] if i["itemCode"] == "MT-105")
     body = {k: item.get(k) for k in ("requestItemId", "itemCode", "description", "quantity", "unitOfMeasure", "unitPrice",
@@ -290,9 +304,9 @@ def main():
           next(i for i in corrected["items"] if i["id"] == item["id"])["manuallyEdited"])
     status, _ = other_buyer.try_call("PUT", f"/quotations/{q['id']}/items/{item['id']}", body)
     check("Another buyer cannot change this RFQ's quotations", status == 403, f"HTTP {status}")
-    for qid in quotation_ids.values():
-        if buyer.call("GET", f"/quotations/{qid}")["status"] == "NEEDS_REVIEW":
-            buyer.call("POST", f"/quotations/{qid}/mark-ready")
+    statuses = {c: buyer.call("GET", f"/quotations/{qid}")["status"] for c, qid in quotation_ids.items()}
+    check("Vendor quotations are ready to compare with no review step (notes stay visible)",
+          all(s == "READY_FOR_COMPARISON" for s in statuses.values()), statuses)
     report = buyer.call("POST", f"/purchase-requests/{pr['id']}/comparisons")
     result = report["result"]
     check("Side-by-side comparison generated", len(result["quotations"]) == 3, f"version {report['reportVersion']}")
@@ -330,13 +344,13 @@ def main():
     check("Unauthenticated access rejected", status == 401, f"HTTP {status}")
     status, _ = BaseInternal().status()
     check("Internal service APIs are not reachable through the gateway", status == 404, f"HTTP {status}")
-    status, _ = auditor.try_upload(f"/purchase-requests/{pr['id']}/quotations?vendorId={vendor_ids['SHAKTI']}",
+    status, _ = manager.try_upload(f"/purchase-requests/{pr['id']}/quotations?vendorId={vendor_ids['SHAKTI']}",
                                    [DATA / "Vendor_1_Shakti_Metals_Quotation.pdf"])
-    check("Auditor cannot upload", status == 403, f"HTTP {status}")
+    check("Manager cannot upload", status == 403, f"HTTP {status}")
     lowest = by_vendor[vendor_ids["VERTEX"]]["quotationId"]
     other = by_vendor[vendor_ids["SHAKTI"]]["quotationId"]
     award = {"comparisonReportId": report["id"], "decision": "APPROVED", "selectedQuotationId": lowest}
-    for who, api in (("Buyer", buyer), ("Auditor", auditor), ("Vendor", vendors["VERTEX"])):
+    for who, api in (("Buyer", buyer), ("Vendor", vendors["VERTEX"])):
         status, _ = api.try_call("POST", f"/purchase-requests/{pr['id']}/approvals", award)
         check(f"{who} cannot award", status == 403, f"HTTP {status}")
     status, body = manager.try_call("POST", f"/purchase-requests/{pr['id']}/approvals", {**award, "selectedQuotationId": other})
@@ -347,18 +361,20 @@ def main():
     check("Manager awards the RFQ (who, when, reason recorded)", approval["decidedBy"] == f"manager{RUN}",
           f"{approval['decision']} {approval['selectedVendorName']} by {approval['decidedBy']} at {approval['decidedAt']}")
     check("RFQ closed as awarded", buyer.call("GET", f"/purchase-requests/{pr['id']}")["status"] == "APPROVED")
+    status, pdf = buyer.raw(f"/purchase-requests/{pr['id']}/award-summary")
+    check("Award summary downloads as a PDF", status == 200 and pdf[:5] == b"%PDF-", f"HTTP {status}, {len(pdf):,} bytes")
     outcomes = {c: next(q["outcome"] for q in vendors[c].call("GET", "/vendor-portal/quotations") if q["rfqId"] == pr["id"])
                 for c in vendors}
     check("Vendors see the outcome (Vertex awarded, the others not)",
           outcomes == {"VERTEX": "AWARDED", "SHAKTI": "NOT_AWARDED", "PIONEER": "NOT_AWARDED"}, outcomes)
     status, _ = buyer.try_call("GET", "/audit-logs")
     check("Buyer cannot read the full audit log", status == 403, f"HTTP {status}")
-    status, _ = auditor.try_call("GET", "/audit-logs?size=5")
-    check("Auditor can read the full audit log", status == 200, f"HTTP {status}")
+    status, _ = manager.try_call("GET", "/audit-logs?size=5")
+    check("Manager can read the full audit log", status == 200, f"HTTP {status}")
     time.sleep(3)  # audit events reach the audit service from each service's outbox within a second or two
-    history = auditor.call("GET", f"/purchase-requests/{pr['id']}/history?size=200")["content"]
+    history = manager.call("GET", f"/purchase-requests/{pr['id']}/history?size=200")["content"]
     actions = {h["action"] for h in history}
-    needed = {"CREATED", "ITEM_ADDED", "UPLOADED", "EXTRACTED", "ITEM_CORRECTED", "MARKED_READY", "GENERATED", "APPROVED"}
+    needed = {"CREATED", "ITEM_ADDED", "UPLOADED", "EXTRACTED", "ITEM_CORRECTED", "GENERATED", "APPROVED"}
     check("RFQ history shows every step", needed <= actions, f"{len(history)} entries; missing {needed - actions or 'none'}")
     check("Extraction recorded as the system, uploads as each vendor, the award as the manager",
           any(h["action"] == "EXTRACTED" and h["performedBy"] == "system" for h in history)
@@ -366,7 +382,7 @@ def main():
           and any(h["action"] == "APPROVED" and h["performedBy"] == f"manager{RUN}" for h in history))
     lock = f"lock{RUN}"
     admin.call("POST", "/users", {"username": lock, "email": f"{lock}@x.example", "fullName": "Lock", "password": PASSWORD,
-                                  "roles": ["AUDITOR"]})
+                                  "roles": ["PROCUREMENT"]})
     for _ in range(5):
         Api().try_call("POST", "/auth/login", {"username": lock, "password": "wrong-password"})
     status, body = Api().try_call("POST", "/auth/login", {"username": lock, "password": PASSWORD})

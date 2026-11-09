@@ -13,7 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Creates the first administrator when the user table is empty. Roles come from migration V2. */
+/**
+ * Creates the first administrator when the user table is empty. While that administrator still uses the start-up
+ * password (from SUTRA_ADMIN_PASSWORD, "Admin@123" by default), it must choose a new one at its next sign-in.
+ */
 @Component
 public class DataInitializer implements ApplicationRunner {
 
@@ -35,10 +38,17 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        var cfg = properties.bootstrapAdmin();
         if (userRepository.count() > 0) {
+            userRepository.findByUsernameIgnoreCase(cfg.username())
+                    .filter(u -> !u.isPasswordChangeRequired() && passwordEncoder.matches(cfg.password(), u.getPasswordHash()))
+                    .ifPresent(u -> {
+                        u.setPasswordChangeRequired(true);
+                        log.warn("Administrator '{}' still uses the start-up password; it must be changed at sign-in.",
+                                u.getUsername());
+                    });
             return;
         }
-        var cfg = properties.bootstrapAdmin();
         Role admin = roleRepository.findByName(RoleName.ADMIN)
                 .orElseThrow(() -> new IllegalStateException("ADMIN role missing - did the migrations run?"));
         AppUser user = new AppUser();
@@ -47,6 +57,7 @@ public class DataInitializer implements ApplicationRunner {
         user.setFullName("System Administrator");
         user.setPasswordHash(passwordEncoder.encode(cfg.password()));
         user.getRoles().add(admin);
+        user.setPasswordChangeRequired(true);
         userRepository.save(user);
         log.info("Created bootstrap administrator '{}'. Change its password after first login.", cfg.username());
     }

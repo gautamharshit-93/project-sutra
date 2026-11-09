@@ -21,7 +21,9 @@ import org.springframework.stereotype.Service;
  *   <li>A flag a person already resolved is not raised again for the same item, field and code.</li>
  *   <li>Extraction flags (low confidence, extractor notes) stay until resolved or the item is edited.</li>
  * </ul>
- * Status becomes NEEDS_REVIEW while any WARNING or ERROR is open, otherwise READY_FOR_COMPARISON.
+ * A read quotation is READY_FOR_COMPARISON straight away; warnings and notes stay open as "to check" and are shown
+ * with the comparison. Only an open ERROR (a line without quantity or price, so no total can be calculated) or a
+ * quotation without lines keeps it in NEEDS_REVIEW.
  */
 @Service
 public class QuotationReviewService {
@@ -63,7 +65,7 @@ public class QuotationReviewService {
                 || (quotation.getStatus() == QuotationStatus.FAILED && quotation.getItems().isEmpty())) {
             return;
         }
-        quotation.setStatus(hasBlockingFlags(quotation) || quotation.getItems().isEmpty()
+        quotation.setStatus(hasOpenErrors(quotation) || quotation.getItems().isEmpty()
                 ? QuotationStatus.NEEDS_REVIEW
                 : QuotationStatus.READY_FOR_COMPARISON);
     }

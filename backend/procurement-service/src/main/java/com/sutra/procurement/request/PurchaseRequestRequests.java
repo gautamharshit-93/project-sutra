@@ -25,7 +25,9 @@ public final class PurchaseRequestRequests {
             Long subEntityId,
             Long customerId,
             @Pattern(regexp = "^[A-Z]{3}$", message = "must be a 3-letter ISO currency code") String currency,
-            LocalDate requiredBy) {
+            LocalDate requiredBy,
+            /** Last day vendors may send quotations (optional, not after requiredBy). */
+            LocalDate quotationsDue) {
     }
 
     public record RequestItemRequest(

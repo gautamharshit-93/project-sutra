@@ -17,10 +17,13 @@ if ($Acceptance) {
     $db = "jdbc:postgresql://localhost:5432/sutra_test"
     $ports = @{ gateway = 9080; auth = 9081; masterdata = 9082; procurement = 9083; audit = 9084 }
     $label = "SUTRA acceptance"
+    # The acceptance scripts sign in dozens of test users from this one computer within a minute.
+    $env:SUTRA_PUBLIC_RATE_LIMIT = "1000"
 } else {
     $db = "jdbc:postgresql://localhost:5432/sutra_db"
     $ports = @{ gateway = 8080; auth = 8081; masterdata = 8082; procurement = 8083; audit = 8084 }
     $label = "SUTRA"
+    $env:SUTRA_PUBLIC_RATE_LIMIT = "20"   # sign-in and vendor sign-up: per minute, per IP address
 }
 
 # Every service gets the same addresses for the others, and its own port.
@@ -43,12 +46,42 @@ if (-not (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | W
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle='SUTRA document service'; & '$root\ai\run.ps1'"
 }
 
-# Audit first (the others deliver audit events to it), the gateway last.
-foreach ($service in @("audit-service", "auth-service", "masterdata-service", "procurement-service", "gateway")) {
+# Sign-in tokens are signed with JWT_SECRET. The first run creates a random one and keeps it as a Windows user
+# setting, so the built-in development secret is never used on this machine.
+if (-not $env:JWT_SECRET) { $env:JWT_SECRET = [Environment]::GetEnvironmentVariable("JWT_SECRET", "User") }
+if (-not $env:JWT_SECRET) {
+    $bytes = New-Object byte[] 48
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+    [Environment]::SetEnvironmentVariable("JWT_SECRET", $env:JWT_SECRET, "User")
+    Write-Host "Created a random JWT_SECRET (Windows user setting)."
+}
+
+function Start-Service([string]$service) {
     $title = "$label $service"
     Start-Process powershell -ArgumentList "-NoExit", "-Command",
         "`$host.UI.RawUI.WindowTitle='$title'; Set-Location '$root\backend\$service'; & '$mvn' -q spring-boot:run -DskipTests"
 }
+
+# Waits until a service answers its health check (its database migrations have then run).
+function Wait-Healthy([string]$name, [int]$port) {
+    $deadline = (Get-Date).AddMinutes(4)
+    while ((Get-Date) -lt $deadline) {
+        try { Invoke-WebRequest "http://localhost:$port/actuator/health" -UseBasicParsing -TimeoutSec 3 | Out-Null; return }
+        catch { Start-Sleep 2 }
+    }
+    Write-Warning "$name did not report healthy on port $port; starting the others anyway."
+}
+
+# Order matters for the cross-schema foreign keys: master data first, then auth (users point to vendors), then
+# procurement (RFQs point to entities, vendors and users). Audit starts first because the others report to it.
+Start-Service "audit-service"
+Start-Service "masterdata-service"
+Wait-Healthy "master data service" $ports.masterdata
+Start-Service "auth-service"
+Wait-Healthy "auth service" $ports.auth
+Start-Service "procurement-service"
+Start-Service "gateway"
 
 if (-not $Acceptance) {
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle='SUTRA frontend'; Set-Location '$root\frontend'; npm run dev"

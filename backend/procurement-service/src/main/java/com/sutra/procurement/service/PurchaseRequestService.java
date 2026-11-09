@@ -265,7 +265,13 @@ public class PurchaseRequestService {
         if (request.currency() != null) {
             pr.setCurrency(request.currency());
         }
+        if (request.quotationsDue() != null && request.requiredBy() != null
+                && request.quotationsDue().isAfter(request.requiredBy())) {
+            throw new BusinessRuleException("DUE_AFTER_REQUIRED_BY",
+                    "Quotations must be due on or before the required-by date");
+        }
         pr.setRequiredBy(request.requiredBy());
+        pr.setQuotationsDue(request.quotationsDue());
     }
 
     private static void applyItem(RequestItem item, RequestItemRequest request) {

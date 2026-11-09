@@ -64,7 +64,7 @@ class UserServiceTest {
     @Test
     void newUserNeedsAPassword() {
         assertThatThrownBy(() -> service.create(new UserRequest("buyer", "b@c.com", "B", null,
-                Set.of(RoleName.AUDITOR), true, null)))
+                Set.of(RoleName.APPROVER), true, null)))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting("code").isEqualTo("PASSWORD_REQUIRED");
     }
@@ -73,7 +73,7 @@ class UserServiceTest {
     void duplicateUsernameIsRejected() {
         when(userRepository.existsByUsernameIgnoreCase("buyer")).thenReturn(true);
         assertThatThrownBy(() -> service.create(new UserRequest("buyer", "b@c.com", "B", "Secret123",
-                Set.of(RoleName.AUDITOR), true, null))).isInstanceOf(DuplicateResourceException.class);
+                Set.of(RoleName.APPROVER), true, null))).isInstanceOf(DuplicateResourceException.class);
     }
 
     @Test
@@ -83,7 +83,7 @@ class UserServiceTest {
         when(currentUser.requirePrincipal()).thenReturn(Fixtures.principal(admin));
 
         assertThatThrownBy(() -> service.update(admin.getId(), new UserRequest("admin", "admin@test", "Admin", null,
-                Set.of(RoleName.AUDITOR), true, null)))
+                Set.of(RoleName.APPROVER), true, null)))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting("code").isEqualTo("SELF_LOCKOUT");
     }

@@ -3,10 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorMessage, fieldErrors } from '../api/client.js';
 import { purchaseRequestsApi, quotationsApi, vendorsApi } from '../api/endpoints.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import CrossCheckPanel from '../components/CrossCheckPanel.jsx';
-import EnginePicker, { engineName, parseChoice } from '../components/EnginePicker.jsx';
 import FilePicker from '../components/FilePicker.jsx';
-import { GradeDetails } from '../components/Grade.jsx';
 import HistoryTimeline from '../components/HistoryTimeline.jsx';
 import QuotationItemForm from '../components/QuotationItemForm.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -32,7 +29,6 @@ export default function QuotationReviewPage() {
   const [editingHeader, setEditingHeader] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [engine, setEngine] = useState('AUTO');
 
   const processing = q && IN_PROGRESS.includes(q.status);
   useEffect(() => {
@@ -78,13 +74,7 @@ export default function QuotationReviewPage() {
           </p>
         </div>
         <div className="btn-row">
-          {editable && q.status !== 'READY_FOR_COMPARISON' && (
-            <button type="button" className="btn btn-primary" disabled={busy || openErrors.length > 0 || !q.items.length}
-                    title={openErrors.length ? 'Fix all errors first' : ''} onClick={() => setConfirm('ready')}>
-              Mark ready for comparison
-            </button>
-          )}
-          {editable && <button type="button" className="btn" disabled={busy} onClick={() => { setEngine('AUTO'); setConfirm('reprocess'); }}>Re-run extraction</button>}
+          {editable && <button type="button" className="btn" disabled={busy} onClick={() => setConfirm('reprocess')}>Read again</button>}
           {editable && <button type="button" className="btn btn-danger-text" disabled={busy} onClick={() => setConfirm('delete')}>Delete</button>}
         </div>
       </div>
@@ -92,11 +82,19 @@ export default function QuotationReviewPage() {
       {processing && (
         <div className="notice notice-info"><span className="spinner spinner-inline" /> Extracting data from the document… this page updates automatically.</div>
       )}
+      {q.status === 'NEEDS_REVIEW' && openErrors.length > 0 && (
+        <div className="notice notice-warning" role="status">
+          <span>
+            {openErrors.length} line(s) have no quantity or price, so no total can be calculated. Fix them below and the
+            quotation becomes ready to compare on its own.
+          </span>
+        </div>
+      )}
       {q.status === 'FAILED' && (
         <div className="notice notice-error" role="alert">
           <div>
             <strong>Extraction failed:</strong> {q.failureReason}
-            <div className="small">The original file is kept. Retry the extraction, or enter the lines manually below.</div>
+            <div className="small">The original file is kept. Read it again, or enter the lines manually below.</div>
           </div>
         </div>
       )}
@@ -117,13 +115,6 @@ export default function QuotationReviewPage() {
             {q.notes && <div className="field-wide"><dt>Notes</dt><dd>{q.notes}</dd></div>}
           </dl>
           <p className="muted small">Extraction attempt {q.processingAttempts}{q.lastProcessedAt ? ` · last run ${formatDateTime(q.lastProcessedAt)}` : ''}</p>
-          {q.extractionQuality && (
-            <div className="quality">
-              <span className="field-label">Extraction quality</span>
-              <GradeDetails report={q.extractionQuality} />
-              <p className="muted small">How far the data can be trusted: lines matched, totals reconciled, fields found. It guides how much checking is needed; it approves nothing.</p>
-            </div>
-          )}
         </section>
 
         <section className="card">
@@ -145,10 +136,6 @@ export default function QuotationReviewPage() {
 
       <FlagsSection quotation={q} editable={editable} onResolved={(updated) => quotation.setData(updated)} />
 
-      {editable && !processing && q.files?.length > 0 && (
-        <CrossCheckPanel quotation={q} editable={editable}
-                         onUseEngine={(chosen) => { setEngine(chosen); setConfirm('reprocess'); }} />
-      )}
 
       <section className="card card-flush">
         <div className="card-header card-header-padded">
@@ -205,7 +192,7 @@ export default function QuotationReviewPage() {
           </div>
         ) : (
           <EmptyState title="No line items">
-            {editable ? 'Add the quoted lines manually, or re-run the extraction.' : 'Nothing has been extracted yet.'}
+            {editable ? 'Add the quoted lines manually, or read the files again.' : 'Nothing has been extracted yet.'}
           </EmptyState>
         )}
       </section>
@@ -224,24 +211,10 @@ export default function QuotationReviewPage() {
         <HeaderForm quotation={q} onClose={() => setEditingHeader(false)}
                     onSaved={(updated) => { quotation.setData(updated); setEditingHeader(false); notify('Details saved'); }} />
       )}
-      {confirm === 'ready' && (
-        <ConfirmDialog title="Mark ready for comparison" confirmLabel="Mark ready" busy={busy} onCancel={() => setConfirm(null)}
-                       onConfirm={() => run(() => quotationsApi.markReady(q.id), 'Quotation is ready for comparison')}
-                       message={openFlags.length
-                         ? `${openFlags.length} open warning(s) will be recorded as acknowledged by you. Continue?`
-                         : 'Confirm that the extracted details match the original document.'} />
-      )}
       {confirm === 'reprocess' && (
-        <ConfirmDialog title="Re-run extraction" confirmLabel="Re-run" busy={busy} onCancel={() => setConfirm(null)}
-                       onConfirm={() => run(() => { const c = parseChoice(engine); return quotationsApi.reprocess(q.id, c.engine, c.model); }, `Extraction restarted (${engineName(engine)})`)}
-                       message={(
-                         <>
-                           Extraction replaces the current lines, flags and any manual corrections with a fresh reading of the original files.
-                           <Field label="Read with" hint="Automatic tries Groq AI first and moves to the rule-based reader if Groq fails or is rate-limited.">
-                             <EnginePicker value={engine} onChange={setEngine} />
-                           </Field>
-                         </>
-                       )} />
+        <ConfirmDialog title="Read the files again" confirmLabel="Read again" busy={busy} onCancel={() => setConfirm(null)}
+                       onConfirm={() => run(() => quotationsApi.reprocess(q.id), 'Reading the quotation again')}
+                       message="This replaces the current lines, notes and any manual corrections with a fresh reading of the original files." />
       )}
       {confirm === 'delete' && (
         <ConfirmDialog title="Delete quotation" danger confirmLabel="Delete" busy={busy} onCancel={() => setConfirm(null)}

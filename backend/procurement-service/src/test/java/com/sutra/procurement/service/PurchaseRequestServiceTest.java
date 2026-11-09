@@ -71,7 +71,7 @@ class PurchaseRequestServiceTest {
         when(repository.nextRequestNumber()).thenReturn(42L);
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var response = service.create(new PurchaseRequestRequest("Laptops", null, entity.id(), null, null, "INR", null));
+        var response = service.create(new PurchaseRequestRequest("Laptops", null, entity.id(), null, null, "INR", null, null));
 
         assertThat(response.requestNumber()).isEqualTo("PR-2026-00042");
         assertThat(response.status()).isEqualTo(PurchaseRequestStatus.DRAFT);
@@ -85,7 +85,7 @@ class PurchaseRequestServiceTest {
         when(masterData.entity(5L)).thenReturn(entity);
         when(repository.nextRequestNumber()).thenReturn(1L);
 
-        assertThatThrownBy(() -> service.create(new PurchaseRequestRequest("X", null, entity.id(), null, null, null, null)))
+        assertThatThrownBy(() -> service.create(new PurchaseRequestRequest("X", null, entity.id(), null, null, null, null, null)))
                 .isInstanceOf(BusinessRuleException.class);
     }
 

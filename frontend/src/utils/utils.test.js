@@ -40,9 +40,11 @@ describe('permissions', () => {
   const ownRequest = { requestedById: buyer.id };
   const otherRequest = { requestedById: 99 };
 
-  it('only admins manage master data, users and see everything', () => {
+  it('buyers manage master data; only admins manage users', () => {
     expect(can.manageMasterData(admin)).toBe(true);
-    expect(can.manageMasterData(buyer)).toBe(false);
+    expect(can.manageMasterData(buyer)).toBe(true);
+    expect(can.manageMasterData(approver)).toBe(false);
+    expect(can.manageUsers(buyer)).toBe(false);
     expect(can.manageUsers(approver)).toBe(false);
     expect(can.viewAudit(approver)).toBe(true);
     expect(can.viewAudit(viewer)).toBe(false);

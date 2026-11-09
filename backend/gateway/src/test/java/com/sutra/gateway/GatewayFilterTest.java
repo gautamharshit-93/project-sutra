@@ -21,7 +21,8 @@ class GatewayFilterTest {
 
     private final JwtCodec jwt = new JwtCodec(new SecurityProperties("test-secret-test-secret-test-secret-123", 60, List.of()));
     private final TokenStateCache states = mock(TokenStateCache.class);
-    private final GatewayFilter filter = new GatewayFilter(jwt, states, JsonMapper.builder().build());
+    private final GatewayFilter filter = new GatewayFilter(jwt, states, JsonMapper.builder().build(),
+            new PublicEndpointRateLimiter(20, java.time.Clock.systemUTC()));
 
     private MockHttpServletResponse run(String path, String token) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", path);

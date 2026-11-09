@@ -1,6 +1,5 @@
 package com.sutra.procurement.response;
 
-import com.sutra.procurement.calculation.ExtractionQualityGrader;
 import com.sutra.procurement.calculation.GradeReport;
 import com.sutra.procurement.entity.Quotation;
 import com.sutra.procurement.entity.QuotationFlag;
@@ -86,8 +85,7 @@ public final class QuotationResponses {
                                     Instant lastProcessedAt, String uploadedBy, boolean submittedByVendor,
                                     Long version, boolean editable, List<FileResponse> files,
                                     List<QuotationItemResponse> items,
-                                    List<QuotationFlagResponse> flags, Instant createdAt, Instant updatedAt,
-                                    GradeReport extractionQuality) {
+                                    List<QuotationFlagResponse> flags, Instant createdAt, Instant updatedAt) {
         public static QuotationResponse from(Quotation q, List<QuotationFileMetadata> files) {
             return new QuotationResponse(q.getId(), q.getPurchaseRequest().getId(),
                     q.getPurchaseRequest().getRequestNumber(), q.getVendor().getId(), q.getVendor().getName(),
@@ -101,14 +99,7 @@ public final class QuotationResponses {
                     files.stream().map(FileResponse::from).toList(),
                     q.getItems().stream().map(QuotationItemResponse::from).toList(),
                     q.getFlags().stream().map(QuotationFlagResponse::from).toList(),
-                    q.getCreatedAt(), q.getUpdatedAt(), extractionQuality(q));
-        }
-
-        /** Graded once data exists (extracted or typed in); null while uploaded, processing or failed empty. */
-        private static GradeReport extractionQuality(Quotation q) {
-            boolean hasData = !q.getItems().isEmpty() || q.getExtractionSource() != null;
-            boolean settled = q.getStatus() != QuotationStatus.UPLOADED && q.getStatus() != QuotationStatus.PROCESSING;
-            return hasData && settled ? ExtractionQualityGrader.grade(q) : null;
+                    q.getCreatedAt(), q.getUpdatedAt());
         }
     }
 }

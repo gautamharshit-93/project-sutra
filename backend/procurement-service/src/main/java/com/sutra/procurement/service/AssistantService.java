@@ -167,18 +167,14 @@ public class AssistantService {
      */
     ChatResponse withRfqDraft(ChatResponse response, String message) {
         if (!currentUser.hasRole(RoleName.ADMIN) && !currentUser.hasRole(RoleName.PROCUREMENT)) {
-            return new ChatResponse(response.reply() + "
-
-Only buyers and administrators can create RFQs.",
+            return new ChatResponse(response.reply() + "\n\nOnly buyers and administrators can create RFQs.",
                     response.links());
         }
         try {
             return new ChatResponse(response.reply(), response.links(), rfqDrafts.fromText(message));
         } catch (RuntimeException e) {
             log.warn("RFQ draft from chat failed: {}", e.getMessage());
-            return new ChatResponse(response.reply() + "
-
-I could not read it as an RFQ (" + e.getMessage()
+            return new ChatResponse(response.reply() + "\n\nI could not read it as an RFQ (" + e.getMessage()
                     + "). Try again, or drop the RFQ file on RFQs > New RFQ.", response.links());
         }
     }
@@ -397,9 +393,6 @@ I could not read it as an RFQ (" + e.getMessage()
         d.put("extractedBy", q.extractionSource());
         d.put("failureReason", q.failureReason());
         d.put("files", q.files().stream().map(f -> f.fileName()).toList());
-        if (q.extractionQuality() != null) {
-            d.put("extractionQuality", q.extractionQuality().grade() + " (" + q.extractionQuality().score() + "/100)");
-        }
         d.put("items", q.items().stream().map(i -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("line", i.lineNumber());
@@ -479,7 +472,9 @@ I could not read it as an RFQ (" + e.getMessage()
         StringBuilder text = new StringBuilder("CONVERSATION\n");
         List<ChatTurn> history = request.history() == null ? List.of() : request.history();
         history.stream().skip(Math.max(0, history.size() - HISTORY_TURNS)).forEach(turn ->
-                text.append("user".equals(turn.role()) ? "User: " : "Assistant: ").append(turn.text()).append("\n\n"));
+                text.append("user".equals(turn.role()) ? "User: " : "Assistant: ")
+                        .append(turn.text().length() > TURN_CHARS ? turn.text().substring(0, TURN_CHARS) + " [...]" : turn.text())
+                        .append("\n\n"));
         text.append("User (latest message, answer this): ").append(request.message());
         text.append("\n\n(").append(languageDirective(request.message())).append(")");
         return text.toString();

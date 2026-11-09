@@ -18,17 +18,15 @@ vi.mock('../auth/AuthContext.jsx', () => ({
 }));
 const { vendorPortalApi } = await import('../api/endpoints.js');
 
-const auditor = { id: 5, fullName: 'Ada Auditor', roles: ['AUDITOR'] };
 const vendorUser = { id: 9, fullName: 'Brakeline Sales', roles: ['VENDOR'], vendorName: 'Brakeline Components' };
 const labels = (user) => navFor(user).filter((i) => i.label).map((i) => i.label);
 
 describe('menus follow the role', () => {
   it('shows each role only what it can use', () => {
-    expect(labels(admin)).toEqual(['Dashboard', 'RFQs', 'Vendors', 'Entities', 'Customers', 'Audit log', 'Award register', 'Users & roles']);
-    expect(labels(buyer)).toEqual(['Dashboard', 'RFQs', 'Vendors']);
+    expect(labels(admin)).toEqual(['Dashboard', 'Entities', 'RFQs', 'Vendors', 'Customers', 'Audit log', 'Award register', 'Users & roles']);
+    expect(labels(buyer)).toEqual(['Dashboard', 'Entities', 'RFQs', 'Vendors', 'Customers', 'Award register']);
     expect(labels(approver)).toEqual(['Dashboard', 'RFQs', 'Audit log', 'Award register']);
-    expect(labels(auditor)).toEqual(['Dashboard', 'Audit log', 'Award register']);
-    expect(labels(vendorUser)).toEqual(['Open RFQs', 'My quotations']);
+    expect(labels(vendorUser)).toEqual(['Open RFQs', 'My quotations', 'Company profile']);
   });
 
   it('sends vendors to their portal after sign-in', () => {

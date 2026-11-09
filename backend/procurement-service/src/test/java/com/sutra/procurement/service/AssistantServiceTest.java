@@ -45,11 +45,12 @@ class AssistantServiceTest {
     private final GroqClient groq = mock(GroqClient.class);
     private final CurrentUserProvider currentUser = mock(CurrentUserProvider.class);
     private final ObjectMapper mapper = JsonMapper.builder().build();
+    private final RfqDraftService drafts = mock(RfqDraftService.class);
     private final AssistantService service =
             new AssistantService(prs, quotations, comparisons, dashboard, groq, currentUser, mapper, drafts);
 
     private static final PurchaseRequestSummary PR = new PurchaseRequestSummary(7L, "PR-2026-00007", "Steel sheets",
-            PurchaseRequestStatus.OPEN, "Sutra Auto", "priya", "INR", LocalDate.of(2026, 12, 1), 3, Instant.EPOCH);
+            PurchaseRequestStatus.OPEN, "Sutra Auto", "priya", "INR", LocalDate.of(2026, 12, 1), 3, Instant.EPOCH, null);
 
     private static QuotationSummary quotation(long id, String vendor, QuotationStatus status) {
         return new QuotationSummary(id, 7L, "PR-2026-00007", 1L, vendor, "Q-" + id, status, "INR",
@@ -112,7 +113,7 @@ class AssistantServiceTest {
         groqAnswers("{\"reply\":\"ok\",\"links\":[]}");
         when(prs.get(7L)).thenReturn(new PurchaseRequestResponse(7L, "PR-2026-00007", "Steel sheets", null,
                 PurchaseRequestStatus.OPEN, 1L, "Sutra Auto", null, null, null, null, 2L, "priya", "INR", null, true,
-                List.of(), Instant.EPOCH, Instant.EPOCH));
+                List.of(), Instant.EPOCH, Instant.EPOCH, null));
 
         service.chat(new ChatRequest("pr-2026-00007 ka status batao", null, null, null));
 
@@ -158,5 +159,24 @@ class AssistantServiceTest {
         assertThat(AssistantService.label(PurchaseRequestStatus.APPROVED)).isEqualTo("Awarded");
         assertThat(AssistantService.label(PurchaseRequestStatus.UNDER_REVIEW)).isEqualTo("Comparing");
         assertThat(AssistantService.label("OPEN")).isEqualTo("Open");
+    }
+
+    @Test
+    void aPastedRfqComesBackAsADraftCardForBuyersOnly() {
+        groqAnswers("{\"reply\":\"Draft ready, please check.\",\"links\":[],\"action\":\"DRAFT_RFQ\"}");
+        var draft = new com.sutra.procurement.response.RfqDraftResponses.RfqDraft("Steel", null, null, "INR", null, null,
+                List.of(), List.of(), "pasted text", null);
+        when(drafts.fromText("Need 12 tonne CRCA sheet")).thenReturn(draft);
+        when(currentUser.hasRole(com.sutra.common.security.RoleName.PROCUREMENT)).thenReturn(true);
+
+        var answer = service.chat(new ChatRequest("Need 12 tonne CRCA sheet", null, null, null));
+
+        assertThat(answer.rfqDraft()).isSameAs(draft);
+        assertThat(answer.reply()).isEqualTo("Draft ready, please check.");
+
+        when(currentUser.hasRole(com.sutra.common.security.RoleName.PROCUREMENT)).thenReturn(false);
+        var auditorAnswer = service.chat(new ChatRequest("Need 12 tonne CRCA sheet", null, null, null));
+        assertThat(auditorAnswer.rfqDraft()).isNull();
+        assertThat(auditorAnswer.reply()).contains("Only buyers and administrators");
     }
 }

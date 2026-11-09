@@ -17,6 +17,7 @@ export default function PurchaseRequestForm({ request, onClose, onSaved }) {
     customerId: request?.customerId || '',
     currency: request?.currency || 'INR',
     requiredBy: request?.requiredBy || '',
+    quotationsDue: request?.quotationsDue || '',
   });
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
@@ -82,7 +83,10 @@ export default function PurchaseRequestForm({ request, onClose, onSaved }) {
         <Field label="Currency" required error={errors.currency} hint="3-letter ISO code">
           <input value={values.currency} maxLength={3} onChange={set('currency')} />
         </Field>
-        <Field label="Required by" error={errors.requiredBy}>
+        <Field label="Quotations due by" error={errors.quotationsDue} hint="Vendors can send quotations until this day">
+          <input type="date" value={values.quotationsDue} onChange={set('quotationsDue')} />
+        </Field>
+        <Field label="Goods required by" error={errors.requiredBy}>
           <input type="date" value={values.requiredBy} onChange={set('requiredBy')} />
         </Field>
         <Field label="Description" error={errors.description} wide>

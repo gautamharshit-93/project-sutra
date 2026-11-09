@@ -62,6 +62,14 @@ public class AuthService {
             auditService.recordAs(username, "USER", null, "LOGIN_BLOCKED", null);
             throw e;
         }
+        // A vendor that signed up but is not approved yet gets a clear answer (only with the right password)
+        userRepository.findByUsernameIgnoreCase(username)
+                .filter(AppUser::isPendingApproval)
+                .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
+                .ifPresent(u -> {
+                    throw new BusinessRuleException("PENDING_APPROVAL", "Your vendor account is waiting for approval "
+                            + "by the SUTRA administrator. You can sign in as soon as it is approved.");
+                });
         Authentication auth;
         try {
             auth = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, request.password()));
@@ -96,6 +104,7 @@ public class AuthService {
             throw new BusinessRuleException("PASSWORD_UNCHANGED", "The new password must differ from the current one");
         }
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordChangeRequired(false);
         user.revokeTokens(); // other sessions must sign in again with the new password
         auditService.record("USER", user.getId(), "PASSWORD_CHANGED", details());
     }

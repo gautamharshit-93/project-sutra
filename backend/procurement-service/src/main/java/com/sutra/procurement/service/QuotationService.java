@@ -175,6 +175,10 @@ public class QuotationService {
     private Quotation createQuotation(PurchaseRequest pr, NamedRef vendor, List<MultipartFile> files, UserRef user,
                                       ExtractionChoice choice, boolean submittedByVendor) {
         requireAcceptsQuotations(pr);
+        if (!quotationRepository.findByPurchaseRequestIdAndVendorId(pr.getId(), vendor.getId()).isEmpty()) {
+            throw new DuplicateResourceException(vendor.getName() + " already has a quotation on "
+                    + pr.getRequestNumber() + ". Add the new files to that quotation instead of creating a second one.");
+        }
         List<ValidatedFile> validated = validateFiles(files, pr.getId(), 0);
 
         Quotation q = new Quotation();
@@ -234,7 +238,7 @@ public class QuotationService {
         return reprocess(id, ExtractionEngine.AUTO);
     }
 
-    /** Queues extraction again with the chosen engine, e.g. to switch engines after a cross-check. */
+    /** Reads the quotation again (automatically: Groq first, the rule-based reader as backup). */
     public QuotationResponse reprocess(Long id, ExtractionEngine engine) {
         return reprocess(id, ExtractionChoice.of(engine));
     }
@@ -349,29 +353,6 @@ public class QuotationService {
         reviewService.updateStatus(q);
         auditService.record(AUDIT_TYPE, id, "FLAG_RESOLVED", details("flag", flag.getCode(), "field",
                 flag.getFieldName(), "message", flag.getMessage(), "comment", Text.blankToNull(comment)));
-        return toResponse(q);
-    }
-
-    /**
-     * The reviewer confirms the quotation is ready. All errors must be fixed first; remaining warnings are
-     * recorded as acknowledged by this user.
-     */
-    public QuotationResponse markReady(Long id) {
-        Quotation q = findEditable(id, false);
-        reviewService.revalidate(q);
-        if (q.getItems().isEmpty()) {
-            throw new BusinessRuleException("NO_ITEMS", "Add at least one line item before marking the quotation ready");
-        }
-        if (QuotationReviewService.hasOpenErrors(q)) {
-            throw new BusinessRuleException("OPEN_ERRORS", "Fix all error flags before marking the quotation ready");
-        }
-        UserRef user = UserRef.of(currentUser.requirePrincipal());
-        List<QuotationFlag> acknowledged = q.getFlags().stream()
-                .filter(f -> !f.isResolved() && f.getSeverity() == FlagSeverity.WARNING).toList();
-        acknowledged.forEach(f -> f.resolve(user));
-        q.setStatus(QuotationStatus.READY_FOR_COMPARISON);
-        auditService.record(AUDIT_TYPE, id, "MARKED_READY", details("acknowledgedWarnings",
-                acknowledged.stream().map(QuotationFlag::getMessage).toList(), "grandTotal", q.getGrandTotal()));
         return toResponse(q);
     }
 

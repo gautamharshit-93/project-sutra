@@ -24,11 +24,12 @@ public final class PurchaseRequestResponses {
 
     public record PurchaseRequestSummary(Long id, String requestNumber, String title, PurchaseRequestStatus status,
                                          String entityName, String requestedBy, String currency,
-                                         LocalDate requiredBy, int itemCount, Instant createdAt) {
+                                         LocalDate requiredBy, int itemCount, Instant createdAt,
+                                         LocalDate quotationsDue) {
         public static PurchaseRequestSummary from(PurchaseRequest p) {
             return new PurchaseRequestSummary(p.getId(), p.getRequestNumber(), p.getTitle(), p.getStatus(),
                     p.getEntity().getName(), p.getRequestedBy().getUsername(), p.getCurrency(), p.getRequiredBy(),
-                    p.getItems().size(), p.getCreatedAt());
+                    p.getItems().size(), p.getCreatedAt(), p.getQuotationsDue());
         }
     }
 
@@ -37,7 +38,8 @@ public final class PurchaseRequestResponses {
                                           Long subEntityId, String subEntityName, Long customerId,
                                           String customerName, Long requestedById, String requestedBy,
                                           String currency, LocalDate requiredBy, boolean editable,
-                                          List<RequestItemResponse> items, Instant createdAt, Instant updatedAt) {
+                                          List<RequestItemResponse> items, Instant createdAt, Instant updatedAt,
+                                          LocalDate quotationsDue) {
         public static PurchaseRequestResponse from(PurchaseRequest p) {
             return new PurchaseRequestResponse(p.getId(), p.getRequestNumber(), p.getTitle(), p.getDescription(),
                     p.getStatus(), p.getEntity().getId(), p.getEntity().getName(),
@@ -48,7 +50,7 @@ public final class PurchaseRequestResponses {
                     p.getRequestedBy().getId(), p.getRequestedBy().getUsername(), p.getCurrency(),
                     p.getRequiredBy(), p.isEditable(),
                     p.getItems().stream().map(RequestItemResponse::from).toList(),
-                    p.getCreatedAt(), p.getUpdatedAt());
+                    p.getCreatedAt(), p.getUpdatedAt(), p.getQuotationsDue());
         }
     }
 }

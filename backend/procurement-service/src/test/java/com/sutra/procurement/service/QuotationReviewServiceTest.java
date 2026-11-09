@@ -43,12 +43,22 @@ class QuotationReviewServiceTest {
     }
 
     @Test
-    void missingRequestedItemNeedsReview() {
+    void missingRequestedItemIsANoteButStillComparable() {
         q.getItems().remove(1);
 
         review.revalidate(q);
 
         assertThat(q.getFlags()).extracting(QuotationFlag::getCode).contains(FlagCodes.MISSING_REQUEST_ITEM);
+        assertThat(q.getStatus()).isEqualTo(QuotationStatus.READY_FOR_COMPARISON);
+    }
+
+    @Test
+    void onlyALineWithoutPriceOrQuantityNeedsReview() {
+        q.getItems().get(0).setUnitPrice(null);
+
+        review.revalidate(q);
+
+        assertThat(q.getFlags()).extracting(QuotationFlag::getCode).contains(FlagCodes.MISSING_UNIT_PRICE);
         assertThat(q.getStatus()).isEqualTo(QuotationStatus.NEEDS_REVIEW);
     }
 

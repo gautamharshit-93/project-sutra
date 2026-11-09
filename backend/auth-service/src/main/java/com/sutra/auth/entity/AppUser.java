@@ -35,6 +35,14 @@ public class AppUser extends AuditableEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    /** A vendor that signed up on the portal and is waiting for an administrator's approval (inactive until then). */
+    @Column(name = "pending_approval", nullable = false)
+    private boolean pendingApproval;
+
+    /** Still on a known start-up password: the app makes the user choose a new one first. */
+    @Column(name = "password_change_required", nullable = false)
+    private boolean passwordChangeRequired;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_role",
             joinColumns = @JoinColumn(name = "user_id"),

@@ -73,6 +73,7 @@ export default function LoginPage() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        <p className="signup-link small">Supplier without a login? <Link to="/register">Register your company</Link></p>
         <Link to="/welcome" className="login-home small">← Back to the SUTRA home page</Link>
       </motion.form>
     </div>

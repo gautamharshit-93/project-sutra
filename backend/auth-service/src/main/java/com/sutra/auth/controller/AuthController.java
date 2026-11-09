@@ -2,6 +2,11 @@ package com.sutra.auth.controller;
 
 import com.sutra.auth.request.AuthRequests.ChangePasswordRequest;
 import com.sutra.auth.request.AuthRequests.LoginRequest;
+import com.sutra.auth.request.AuthRequests.VendorSignupRequest;
+import com.sutra.auth.response.UserResponses.SignupAccepted;
+import com.sutra.auth.service.VendorSignupService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import com.sutra.auth.response.UserResponses.AuthResponse;
 import com.sutra.auth.response.UserResponses.UserResponse;
 import com.sutra.auth.service.AuthService;
@@ -18,14 +23,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final VendorSignupService signups;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, VendorSignupService signups) {
         this.authService = authService;
+        this.signups = signups;
     }
 
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    /** Public: a supplier signs up; the login stays inactive until an administrator approves it. */
+    @PostMapping("/register-vendor")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SignupAccepted registerVendor(@Valid @RequestBody VendorSignupRequest request) {
+        return signups.register(request);
     }
 
     @GetMapping("/me")

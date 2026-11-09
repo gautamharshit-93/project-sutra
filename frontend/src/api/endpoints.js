@@ -7,6 +7,8 @@ export const authApi = {
   me: () => data(http.get('/auth/me')),
   changePassword: (currentPassword, newPassword) =>
     data(http.post('/auth/change-password', { currentPassword, newPassword })),
+  /** Public: a supplier signs up; the login waits for an administrator's approval. */
+  registerVendor: (body) => data(http.post('/auth/register-vendor', body)),
 };
 
 /** Generic CRUD for the master-data resources. */
@@ -28,11 +30,33 @@ export const entitiesApi = {
 };
 export const customersApi = crud('/customers');
 export const vendorsApi = crud('/vendors');
-export const usersApi = { ...crud('/users'), roles: () => data(http.get('/users/roles')) };
+export const usersApi = {
+  ...crud('/users'),
+  roles: () => data(http.get('/users/roles')),
+  vendorSignups: () => data(http.get('/users/vendor-signups')),
+  approveVendor: (id) => data(http.post(`/users/${id}/approve-vendor`)),
+  rejectVendor: (id) => data(http.delete(`/users/${id}/vendor-signup`)),
+};
+
+/** A vendor's own company details on the portal. */
+export const vendorProfileApi = {
+  get: () => data(http.get('/vendor-profile')),
+  update: (body) => data(http.put('/vendor-profile', body)),
+};
 
 export const purchaseRequestsApi = {
   ...crud('/purchase-requests'),
   changeStatus: (id, status) => data(http.patch(`/purchase-requests/${id}/status`, { status })),
+  /** Header + items (+ open to vendors) in one step. */
+  createWithItems: (request, items, open) => data(http.post('/purchase-requests/with-items', { request, items, open })),
+  /** Reads dropped RFQ files (PDF, scan, Word, Excel) into a draft; nothing is saved. */
+  draftFromFiles: (files) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f));
+    return data(http.post('/purchase-requests/draft-from-files', form, { timeout: 240000 }));
+  },
+  /** Reads pasted RFQ text into a draft; nothing is saved. */
+  draftFromText: (text) => data(http.post('/purchase-requests/draft-from-text', { text }, { timeout: 240000 })),
   addItem: (id, body) => data(http.post(`/purchase-requests/${id}/items`, body)),
   updateItem: (id, itemId, body) => data(http.put(`/purchase-requests/${id}/items/${itemId}`, body)),
   removeItem: (id, itemId) => data(http.delete(`/purchase-requests/${id}/items/${itemId}`)),
@@ -54,24 +78,26 @@ export const purchaseRequestsApi = {
   decide: (id, body) => data(http.post(`/purchase-requests/${id}/approvals`, body)),
   /** Audit trail of the request, its quotations, comparisons and decisions. */
   history: (id) => data(http.get(`/purchase-requests/${id}/history`)),
+  /** Downloads the award summary PDF (after a decision is recorded). */
+  downloadAwardSummary: async (id, requestNumber) => {
+    const response = await http.get(`/purchase-requests/${id}/award-summary`, { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${requestNumber || 'rfq'}-award-summary.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
 };
 
 export const quotationsApi = {
   get: (id) => data(http.get(`/quotations/${id}`)),
   updateHeader: (id, body) => data(http.put(`/quotations/${id}`, body)),
   remove: (id) => data(http.delete(`/quotations/${id}`)),
-  reprocess: (id, engine = 'AUTO', model = null) => data(http.post(`/quotations/${id}/reprocess`, null, {
-    params: { engine, ...(model ? { model } : {}) },
-  })),
-  /**
-   * Reads the quotation with several engines side by side (all available ones when `engines` is empty). Nothing is
-   * saved. The engines run one after another, so this can take minutes.
-   */
-  crossCheck: (id, engines = []) => data(http.post(`/quotations/${id}/cross-check`, null, {
-    params: engines.length ? { engines: engines.join(',') } : {},
-    timeout: 10 * 60 * 1000,
-  })),
-  markReady: (id) => data(http.post(`/quotations/${id}/mark-ready`)),
+  /** Reads the quotation's files again (Groq first, the rule-based reader as backup). */
+  reprocess: (id) => data(http.post(`/quotations/${id}/reprocess`)),
   addItem: (id, body) => data(http.post(`/quotations/${id}/items`, body)),
   updateItem: (id, itemId, body) => data(http.put(`/quotations/${id}/items/${itemId}`, body)),
   removeItem: (id, itemId) => data(http.delete(`/quotations/${id}/items/${itemId}`)),
@@ -117,6 +143,8 @@ export const vendorPortalApi = {
     }));
   },
   quotations: () => data(http.get('/vendor-portal/quotations')),
+  /** Menu badge counts: { openToQuote, decidedQuotationIds }. */
+  badges: () => data(http.get('/vendor-portal/badges')),
   withdraw: (id) => data(http.delete(`/vendor-portal/quotations/${id}`)),
   download: async (id, fileId, fileName) => {
     const response = await http.get(`/vendor-portal/quotations/${id}/files/${fileId}`, { responseType: 'blob' });
@@ -133,6 +161,8 @@ export const vendorPortalApi = {
 
 export const reportingApi = {
   dashboard: () => data(http.get('/dashboard')),
+  /** Menu badge counts: { rfqsToCompare, awaitingAward } for the signed-in company user. */
+  badges: () => data(http.get('/dashboard/badges')),
   /** Health of every service behind the gateway. */
   services: () => data(http.get('/system/services')),
   comparison: (id) => data(http.get(`/comparisons/${id}`)),

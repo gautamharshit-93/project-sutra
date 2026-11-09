@@ -1,65 +1,72 @@
 # Project SUTRA — Vendor Quotation Management System
 
-Centralises business entities, customers, vendors, purchase requests and vendor quotations. Users upload
-quotations as PDF, Excel or Word files. The system extracts the details, flags anything uncertain, compares
-vendors side by side and records an authorised human decision with a full audit trail.
-AI assists; backend arithmetic and people decide.
+Centralises business entities, customers, vendors, requests for quotation (RFQs) and vendor quotations. Buyers create
+an RFQ (or drop the RFQ document and let it fill itself in), vendors send their quotations as PDF, Excel or Word
+files through their own portal, SUTRA reads and checks them, compares the vendors side by side, and a manager
+records the award with a full audit trail. AI reads; the backend calculates; people decide.
 
 ```
 frontend/   React 18 + Vite UI                                  http://localhost:5173
 backend/    Java 17, Spring Boot 4.1 microservices              gateway http://localhost:8080
             gateway, auth-service, masterdata-service, procurement-service, audit-service, sutra-common
-            archive/  version 1 monolith backend
-database/   PostgreSQL 18 schema per service (Flyway) + setup scripts
-            archive/  version 1 migrations
+database/   PostgreSQL 18: one schema per service (Flyway migrations) + setup scripts
 ai/         Python 3.12 FastAPI document service                http://localhost:8000
-            test-data/  automotive test pack (+ v1 IT test pack), scripts/  acceptance test, data pack generator
-docs/       Architecture (.docx / .pdf), acceptance results, spec compliance check
+            test-data/  test packs, scripts/  acceptance test
+docs/       ARCHITECTURE.md (diagrams, ER model), SPEC_COMPLIANCE.md, ACCEPTANCE_RESULTS.md
 start-all.ps1 / stop-all.ps1   start or stop every service
 ```
 
-Exact, verified-compatible versions of every component are listed in [VERSIONS.md](VERSIONS.md).
+Exact, verified-compatible versions of every component are in [VERSIONS.md](VERSIONS.md). How the parts fit together,
+with diagrams and the database model, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## How extraction works
+## Roles
 
-1. A user uploads a vendor's quotation for a purchase request: one file, or several files that together form one
-   quotation (for example the same offer as PDF, Word and Excel, as in `ai/test-data/`). The backend checks each file's type,
-   size and real content (magic bytes, Office package structure), stores the original bytes in PostgreSQL linked to
-   the same quotation, and returns immediately.
-2. In the background an **extraction engine** reads the documents. Two engines can be switched per upload or retry:
+Four roles only.
 
-   | Engine | What it is | Needs |
-   |--------|------------|-------|
-   | `GROQ` | Groq AI (`openai/gpt-oss-120b`, free tier, strict JSON-schema output). Excel, Word and text PDFs are converted to text by the Python service; **scanned PDFs** are rendered page by page with Apache PDFBox and read locally by **Tesseract OCR**, then Groq reads the text | `GROQ_API_KEY` (+ Tesseract for scans) |
-   | `RULES` | Rule-based reader in the Python service, no AI: finds the item table by its column headers and totals, dates and terms by their labels. Works on Excel, Word and text PDFs with a normal layout | Python service only |
+| Role | Does |
+|------|------|
+| **Administrator** (ADMIN) | Everything, including users, roles and approving vendor sign-ups |
+| **Buyer** (PROCUREMENT) | The company's work: entities and sub-entities, customers, vendors' details, RFQs, quotations and comparisons (changes only RFQs they raised) |
+| **Vendor** (VENDOR) | A supplier that signed up and was approved: sees open RFQs, sends its own quotations, keeps its company profile |
+| **Manager** (APPROVER) | Awards or rejects compared RFQs (not ones they raised), reads the audit log |
 
-   `AUTO` (the default) tries `SUTRA_ENGINE_ORDER` (Groq → rules) and moves on when an engine is not configured,
-   fails (e.g. a rate-limited free tier) or finds no line items. A rate-limited Groq model first falls back to
-   `GROQ_FALLBACK_MODELS`; temporary errors (HTTP 503) are retried. Quotations extracted earlier by Gemini keep their
-   `GEMINI` source in the history.
-   All files of one quotation are read together: each line is listed once, and figures that differ between the
-   files are flagged.
-3. Quoted lines are matched to requested lines: exactly by item code (e.g. `IT-001`) where present, otherwise by
-   description and specification (rapidfuzz in Python, with a local fallback in Java).
-4. The backend **recalculates every line and total itself** and flags differences from the printed figures,
-   low-confidence values, unmatched or missing items, currency, validity and missing commercial terms.
-5. A reviewer corrects or enters data manually, accepts warnings and marks the quotation ready. Each extraction gets
-   an **extraction-quality grade** (A-F, 100 points from fixed rules: lines matched, totals reconciled, fields found)
-   that shows how much checking is needed. **Cross-check** re-reads the files with every available engine and shows
-   the readings side by side, graded the same way, without saving anything; the reviewer can then re-run the
-   extraction with the engine they trust.
-6. The comparison ranks complete quotations on like-for-like totals and adds an **advisory vendor grade** (price 40,
-   coverage 15, delivery, payment, warranty and validity 10 each, open flags 5; rules in `VendorGrader`).
-   **Nothing is approved automatically.** An approver records the decision, and a reason is required when it is not
-   the lowest complete quotation.
+Roles are enforced in the backend (`@PreAuthorize` on every endpoint, record-level checks in `RecordAccessPolicy`,
+`ApprovalService` and the vendor portal); the UI only hides what a role cannot do.
 
-If extraction fails, or no engine finds a single line item (e.g. a blank document), the quotation becomes `FAILED`
-with each engine's reason and the original file is kept, so the user can retry with another engine or type the
-data in.
+## The flow
+
+1. **Vendors sign up** at `/register` (company, contact, GST, login). The login stays inactive until an administrator
+   clicks **Approve** under *Users & roles* (the menu shows a badge), which creates the vendor and activates the login.
+2. **A buyer creates an RFQ.** Drop the RFQ document (PDF, scanned PDF, Word or Excel) on the RFQs page, or paste it
+   into the assistant: Groq fills in the title, dates and every item, and the buyer checks it and clicks **Create
+   RFQ** (header and all items in one step, optionally opened to vendors at once). The entity (company or plant buying)
+   comes first, with **+ New** right there. A **quotations due by** date closes the vendor portal for that RFQ after
+   that day.
+3. **Vendors send quotations** from their portal (one quotation per vendor per RFQ, one or several files).
+4. **SUTRA reads them automatically.** Excel, Word and text PDFs are turned into text by the Python service; scanned
+   PDFs are rendered with Apache PDFBox and read by local Tesseract OCR (English + Hindi). Groq (`openai/gpt-oss-120b`,
+   free tier, strict JSON schema) reads the text; if Groq is not configured, rate-limited or finds nothing, the
+   rule-based reader in the Python service takes over. Quoted lines are matched to the requested ones by item code,
+   then by description.
+5. **The backend recalculates every line and total** and notes anything to check (printed totals that differ,
+   unmatched or missing items, missing warranty, validity or payment terms). A quotation that was read is **ready to
+   compare at once**; only a line without quantity or price (no total possible) or no lines at all needs a person.
+6. **The buyer clicks Compare now.** The side-by-side comparison ranks complete quotations on like-for-like totals and
+   adds an advisory vendor grade (price 40, coverage 15, delivery, payment, warranty and validity 10 each, open notes
+   5). Comparing closes the RFQ to new quotations.
+7. **A manager awards it** (a reason is required when it is not the lowest complete quotation). Nothing is ever
+   approved automatically. The **award summary PDF** can be downloaded from the Award tab and the award register;
+   vendors see *Awarded* / *Not awarded*.
+
+Menu badges show what is waiting: RFQs ready to compare (buyers), RFQs waiting for an award (managers), vendor
+sign-ups (administrators), open RFQs not yet quoted and new outcomes (vendors).
+
+If a quotation cannot be read at all (e.g. a blank document) it becomes `FAILED` with the reason, the original file
+is kept, and the buyer can read it again or type the lines in.
 
 ## Running it
 
-Prerequisites (already installed on this machine): JDK 17+, Maven 3.9, Node 24, Python 3.12, PostgreSQL 18.
+Prerequisites (installed on this machine): JDK 17+, Maven 3.9, Node 24, Python 3.12, PostgreSQL 18, Tesseract 5.
 
 ```powershell
 # one time: database login and databases (as the postgres superuser)
@@ -69,15 +76,16 @@ psql -U postgres -h localhost -f database/scripts/01_create_database.sql
 cd ai;       python -m venv .venv; .\.venv\Scripts\python -m pip install -r requirements-dev.txt; cd ..
 cd frontend; npm install; cd ..
 
-# start everything (one window per service)
+# start everything (one window per service) / stop everything
 .\start-all.ps1
-
-# stop everything
 .\stop-all.ps1
 ```
 
-Each service applies its own schema from `database/<service>/` with Flyway on start. On an empty database the auth
-service creates the administrator **admin / Admin@123**: change this password after signing in.
+Each service applies its own schema from `database/<service>/` with Flyway on start; `start-all.ps1` starts master
+data first, then auth, then the rest, because the cross-schema foreign keys need the referenced tables. On an empty
+database the auth service creates the administrator **admin / Admin@123**, and the app makes that administrator choose
+a new password at the first sign-in. To empty a database again, stop the services and run
+`database/scripts/02_reset_database.sql` (take a `pg_dump` backup first).
 
 The automotive test pack is in `ai/test-data/` (one RFQ, three vendors, each sending a PDF quotation and an Excel
 material list; expected totals in `ai/test-data/README.txt`). The acceptance test runs the whole workflow on it
@@ -92,73 +100,34 @@ ai\.venv\Scripts\python ai\scripts\acceptance_test.py     # writes docs/ACCEPTAN
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `GROQ_API_KEY` | *(unset)* | Groq key (free, console.groq.com). Without it the Groq engine and the assistant are off |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model for extraction and the assistant |
-| `GROQ_FALLBACK_MODELS` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Models tried when `GROQ_MODEL` is rate-limited (comma-separated) |
-| `TESSERACT_PATH` | *(auto-detected)* | Tesseract executable for scanned PDFs; `C:\Program Files\Tesseract-OCR\tesseract.exe` and the PATH are searched |
-| `TESSERACT_LANGUAGES` / `SUTRA_OCR_DPI` / `SUTRA_OCR_MAX_PAGES` | `eng` / `300` / `30` | OCR languages (e.g. `eng+hin` once Hindi data is installed), render resolution, page limit per file |
-| `TESSDATA_PREFIX` | *(Tesseract's own folder)* | Folder with the OCR language files. On this machine it is `%LOCALAPPDATA%\Tesseract-OCR\tessdata` (English + Hindi, no admin rights needed) and `TESSERACT_LANGUAGES=eng+hin`; both are Windows user settings |
-| `SUTRA_ENGINE_ORDER` | `GROQ,RULES` | Engines `AUTO` tries, in order |
-| `SUTRA_EXTRACTION_CONCURRENCY` | `1` | Extractions running at once (1 keeps free tiers within their rate limits) |
+| `GROQ_API_KEY` | *(unset)* | Groq key (free, console.groq.com). Without it Groq reading and the assistant are off |
+| `GROQ_MODEL` / `GROQ_FALLBACK_MODELS` | `openai/gpt-oss-120b` / `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Groq model, and the models tried when it is rate-limited |
+| `TESSERACT_PATH` | *(auto-detected)* | Tesseract executable; `C:\Program Files\Tesseract-OCR\tesseract.exe` and the PATH are searched |
+| `TESSDATA_PREFIX` / `TESSERACT_LANGUAGES` | Tesseract's folder / `eng` | OCR language files and languages. On this machine: `%LOCALAPPDATA%\Tesseract-OCR\tessdata` and `eng+hin` (Windows user settings) |
+| `SUTRA_OCR_DPI` / `SUTRA_OCR_MAX_PAGES` | `300` / `30` | OCR render resolution and page limit per file |
+| `SUTRA_ENGINE_ORDER` | `GROQ,RULES` | Readers tried in order |
+| `SUTRA_EXTRACTION_CONCURRENCY` | `1` | Quotations read at once (1 keeps the free tier within its limits) |
 | `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/sutra_db` / `sutra` / `sutra_pass` | Database |
-| `JWT_SECRET` | dev value | **Set in any shared environment** (32+ characters) |
-| `SUTRA_ADMIN_PASSWORD` | `Admin@123` | Password of the first administrator (empty database only) |
+| `JWT_SECRET` | random, created by `start-all.ps1` | Signs sign-in tokens. The first start creates a random one and keeps it as a Windows user setting |
+| `SUTRA_ADMIN_PASSWORD` | `Admin@123` | Start-up administrator password (empty database only); must be changed at first sign-in |
+| `SUTRA_PUBLIC_RATE_LIMIT` | `20` | Sign-in and vendor sign-up requests per minute from one IP address |
+| `CROSS_SCHEMA_FKS` | `true` | Foreign keys between the services' schemas (off only where one schema is tested alone) |
 | `AI_SERVICE_URL` | `http://localhost:8000` | Python document service |
 | `SUTRA_MAX_FILE_BYTES` | 20 MB | Upload limit |
 | `CORS_ORIGINS` | `http://localhost:5173` | Allowed browser origins |
 
-## Roles
-
-| Role | Can |
-|------|-----|
-| ADMIN | Everything: master data, users and roles, any purchase request, decisions, audit log |
-| PROCUREMENT | Create purchase requests; upload, review and correct quotations and generate comparisons **on their own requests** |
-| APPROVER | Read everything, record approval/rejection decisions (not on requests they raised), read the audit log |
-| VIEWER | Read-only |
-
-Roles are enforced in the backend: `@PreAuthorize` on each endpoint, plus record-level checks in `RecordAccessPolicy`
-and `ApprovalService`. The UI only hides what a role cannot do.
-
 ## Tests
 
 ```powershell
-cd backend;  mvn test                              # JUnit 6 + Mockito unit tests, PostgreSQL integration
+cd backend;  mvn test                              # JUnit 6 + Mockito service tests, PostgreSQL integration
 cd ai;       .\.venv\Scripts\python -m pytest       # file-to-text parsers, matcher, API
 cd frontend; npm test                               # Vitest + React Testing Library
 ```
 
-The backend integration tests use the `sutra_test` database, which is wiped and rebuilt from the migrations on
-each run. `AiServiceContractIntegrationTest` runs against the real Python service, and skips itself when the
-service is not running. No test calls a real AI API: `GroqQuotationExtractorTest` uses a mock HTTP server, and the workflow test uses the
-rule-based reader. `PdfOcrReaderTest` runs the real Tesseract on a generated scanned page and skips itself when
-Tesseract is not installed.
+243 backend tests, 38 Python tests, 54 frontend tests, and 74 end-to-end acceptance checks. Service tests mock the
+repositories, the other services and Groq, so business logic is tested without a database or network. The
+procurement integration tests use the `sutra_test` database (the procurement schema is wiped and rebuilt on each
+run); `DocumentServiceContractIntegrationTest` uses the real Python service and skips itself when it is not running;
+`PdfOcrReaderTest` runs the real Tesseract and skips itself when it is not installed. No test calls a real AI API.
 
-## Specification traceability
-
-| Spec | Requirement | Where |
-|------|-------------|-------|
-| 2 | React, Spring Boot REST/JSON, PostgreSQL, Python processing, JUnit + Mockito | `frontend/`, `backend/`, `database/`, `ai/` |
-| 3.1 | CRUD for entities and sub-entities, customers, vendors, users and roles | `EntityController`, `CustomerController`, `VendorController`, `UserController`; UI: Entities, Customers, Vendors, Users & roles |
-| 3.2 | Purchase requests and items (description, quantity, unit, specifications) | `PurchaseRequestService`; UI: Purchase requests → Requested items |
-| 3.2 | Upload PDF/Excel/Word for a vendor and request (one or several files per quotation) | `POST /api/purchase-requests/{id}/quotations`; UI: Quotations tab |
-| 3.2 | File validation: type, size, readability, clear messages | `QuotationFileValidator` (magic bytes, Office structure, `.doc` guidance) |
-| 3.2 | Original files stored in PostgreSQL with name, format, size, upload time, quotation | `quotation_file` table (BYTEA + SHA-256); files listed, downloadable, addable on the quotation page |
-| 3.2 | Manual entry and correction | `QuotationService` item/header endpoints; UI: quotation review page |
-| 3.2 | Statuses Uploaded, Processing, Needs Review, Ready for Comparison, Failed | `QuotationStatus` + DB CHECK constraint |
-| 3.3 | Extract items, quantities, prices, discounts, taxes, totals, validity, delivery and payment terms | `ExtractionEngines` choosing `GroqQuotationExtractor` (+ `PdfOcrReader` for scans, `ExtractionSchema`) or `RulesQuotationExtractor` (`ai/app/rules.py`) |
-| 3.3 | Cross-check engines and grade extraction quality | `ExtractionCrossCheckService`, `ExtractionQualityGrader`; UI: quotation page → Cross-check |
-| 3.3 | Match equivalent items, flag unmatched or missing | `HybridItemMatcher` (item codes, then descriptions/specs), `ai/app/matcher.py`, `QuotationValidator` |
-| 3.3 | Side-by-side comparison with price differences, missing info and terms | `ComparisonEngine` (+ advisory `VendorGrader`); UI: `ComparisonMatrix` |
-| 3.3 | Totals calculated by the backend, not AI | `QuotationCalculator` (BigDecimal, HALF_UP) |
-| 3.3 | Flag uncertain or conflicting values; never auto-approve | `quotation_flag` table, `QuotationReviewService`, `TermsCheck` (e.g. "UPS warranty not specified"); approvals only via `ApprovalService` |
-| 3.3 | Keep the file and status on failure; retry or manual entry | `QuotationProcessingService` → `FAILED` + reason; reprocess endpoint |
-| 3.4 | Authorised review and decision with user, timestamp and reason | `ApprovalService`, `approval` table CHECK constraints |
-| 3.4 | History of important changes | `AuditService` → `audit_log`; UI: Audit log |
-| 4 | Normalised schema, FKs, constraints, indexes, decimal money | `database/migrations/V1__init_schema.sql` |
-| 5 | Package structure: controller, service, repository, entity, request/response, exception, validation/util/config, AI client | `backend/src/main/java/com/sutra/*` |
-| 6 | Centralised exception handling and the named exceptions | `GlobalExceptionHandler`, `ApiError`, `EntityNotFoundException`, `VendorNotFoundException`, `QuotationNotFoundException`, `UnsupportedQuotationFileException`, `QuotationProcessingException` |
-| 6 | Authentication and role-based authorisation | JWT (`SecurityConfig`, `JwtService`), `@PreAuthorize`, `RecordAccessPolicy` |
-| 6 | No file contents, credentials or secrets in logs | Only IDs, names and sizes are logged; `toString()` of file and input objects omits bytes |
-| 7 | Workflow: request → upload → extract/flag → review → compare → decide | Purchase request page with step tracker and tabs |
-| 8 | Service tests with mocked repositories and AI; PostgreSQL and file-processing integration tests | `backend/src/test/java/com/sutra/**` |
-| 9 | Acceptance criteria | Covered by `QuotationWorkflowIntegrationTest` end to end |
+How each requirement of the specification is met, with the code that does it: [docs/SPEC_COMPLIANCE.md](docs/SPEC_COMPLIANCE.md).

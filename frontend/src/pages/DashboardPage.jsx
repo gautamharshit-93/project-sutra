@@ -61,7 +61,7 @@ export default function DashboardPage() {
           <h1>Welcome back, {firstName}</h1>
           <p>{user.roles.map(roleLabel).join(', ')} · {intro(user)}</p>
           <div className="btn-row">
-            {can.createRequest(user) && <Link to="/purchase-requests" className="btn btn-primary"><Icon name="plus" size={16} /> New RFQ</Link>}
+            {can.createRequest(user) && <Link to="/purchase-requests?new=1" className="btn btn-primary"><Icon name="plus" size={16} /> New RFQ</Link>}
             {can.viewAwardRegister(user) && <Link to="/awards" className="btn btn-ghost">Award register <Icon name="arrow" size={16} /></Link>}
             {!can.viewAwardRegister(user) && can.workOnRfqs(user) && <Link to="/purchase-requests" className="btn btn-ghost">All RFQs <Icon name="arrow" size={16} /></Link>}
           </div>
@@ -420,7 +420,7 @@ function GettingStarted({ d }) {
   const steps = [
     { done: (d.entities || 0) > 0, text: <>Add your company under <Link to="/entities">Entities</Link></> },
     { done: (d.vendors || 0) > 0, text: <>Add your suppliers under <Link to="/vendors">Vendors</Link></> },
-    { done: false, text: <>Create logins under <Link to="/users">Users &amp; roles</Link>: buyers, managers, an auditor and one vendor login per supplier</> },
+    { done: false, text: <>Create logins under <Link to="/users">Users &amp; roles</Link>: buyers and managers (vendors register themselves and you approve them there)</> },
     { done: sum(d.purchaseRequestsByStatus) > 0, text: 'A buyer creates an RFQ and opens it to vendors' },
     { done: sum(d.quotationsByStatus) > 0, text: 'Vendors sign in and send their quotations' },
     { done: (d.purchaseRequestsByStatus?.APPROVED || 0) > 0, text: 'The buyer compares them and a manager awards the RFQ' },

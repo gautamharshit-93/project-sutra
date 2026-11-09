@@ -124,15 +124,15 @@ class QuotationProcessingServiceTest {
     }
 
     @Test
-    void aiTotalsThatDisagreeWithBackendArithmeticAreFlaggedForReview() {
+    void aiTotalsThatDisagreeWithBackendArithmeticAreFlaggedButComparable() {
         when(extractor.extract(any())).thenReturn(extraction(List.of(
                 line("Dell Latitude 5440", "10", "68500", "18", "808300", 0.95),
                 line("Dell 24in Monitor", "10", "11200", "18", "132160", 0.6)), "999999", List.of("Stamp covers total")));
 
         service.process(quotation.getId());
 
-        assertThat(quotation.getGrandTotal()).isEqualByComparingTo("940460.00");
-        assertThat(quotation.getStatus()).isEqualTo(QuotationStatus.NEEDS_REVIEW);
+        assertThat(quotation.getGrandTotal()).isEqualByComparingTo("940460.00"); // the backend's own total is used
+        assertThat(quotation.getStatus()).isEqualTo(QuotationStatus.READY_FOR_COMPARISON);
         assertThat(quotation.getFlags()).extracting(f -> f.getCode()).contains(
                 FlagCodes.GRAND_TOTAL_MISMATCH, FlagCodes.LOW_CONFIDENCE, FlagCodes.EXTRACTOR_NOTE);
     }

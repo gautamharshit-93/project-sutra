@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { errorMessage } from '../api/client.js';
 import { authApi } from '../api/endpoints.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { useToast } from './Toast.jsx';
 import { ErrorBanner, Field, Modal } from './ui.jsx';
 
-export default function ChangePasswordModal({ onClose }) {
+/**
+ * Changes the signed-in user's password. With `required` (an administrator still on the start-up password) it
+ * cannot be dismissed. Changing the password ends every session, so the user is signed in again with the new one.
+ */
+export default function ChangePasswordModal({ onClose, required = false }) {
   const { notify } = useToast();
+  const { user, login } = useAuth();
   const [form, setForm] = useState({ current: '', next: '', confirm: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,6 +25,7 @@ export default function ChangePasswordModal({ onClose }) {
     setError('');
     try {
       await authApi.changePassword(form.current, form.next);
+      await login(user.username, form.next);
       notify('Password changed');
       onClose();
     } catch (err) {
@@ -30,15 +37,21 @@ export default function ChangePasswordModal({ onClose }) {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   return (
-    <Modal title="Change password" onClose={onClose} footer={(
+    <Modal title={required ? 'Choose a new password' : 'Change password'} onClose={onClose} dismissible={!required} footer={(
       <>
-        <button type="button" className="btn" onClick={onClose}>Cancel</button>
+        {!required && <button type="button" className="btn" onClick={onClose}>Cancel</button>}
         <button type="submit" form="password-form" className="btn btn-primary" disabled={busy || mismatch}>
           {busy ? 'Saving…' : 'Change password'}
         </button>
       </>
     )}>
       <form id="password-form" className="form-grid" onSubmit={submit}>
+        {required && (
+          <div className="notice notice-warning">
+            You are still using the start-up password, which anyone reading the setup guide knows. Choose your own
+            password to continue.
+          </div>
+        )}
         <ErrorBanner message={error} />
         <Field label="Current password" required wide>
           <input type="password" autoComplete="current-password" value={form.current} onChange={set('current')} required />

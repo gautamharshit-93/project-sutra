@@ -2,14 +2,14 @@
  * UI permission helpers. They only decide what to show; every service enforces each rule again
  * (@PreAuthorize, RecordAccessPolicy, ApprovalService and the vendor portal's own-vendor checks).
  */
-export const ROLES = ['ADMIN', 'PROCUREMENT', 'APPROVER', 'AUDITOR', 'VENDOR'];
+/** Four roles: the administrator can do everything, the buyer does the company's work, vendors quote, the manager awards. */
+export const ROLES = ['ADMIN', 'PROCUREMENT', 'APPROVER', 'VENDOR'];
 
 /** What each role is called on screen. */
 export const ROLE_LABELS = {
   ADMIN: 'Administrator',
   PROCUREMENT: 'Buyer',
   APPROVER: 'Manager',
-  AUDITOR: 'Auditor',
   VENDOR: 'Vendor',
 };
 
@@ -25,15 +25,16 @@ export const can = {
   /** A supplier's login: only the vendor portal. */
   useVendorPortal: (user) => hasRole(user, 'VENDOR'),
   /** The company's own users. */
-  isStaff: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT', 'APPROVER', 'AUDITOR'),
-  manageMasterData: (user) => hasRole(user, 'ADMIN'),
+  isStaff: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT', 'APPROVER'),
+  /** Entities, customers and vendors' details: buyers' work too. */
+  manageMasterData: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT'),
   /** Buyers look up vendors when uploading on their behalf; administrators manage them. */
   viewVendors: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT'),
   manageUsers: (user) => hasRole(user, 'ADMIN'),
-  viewAudit: (user) => hasRole(user, 'ADMIN', 'APPROVER', 'AUDITOR'),
-  /** The RFQ workspace: buyers run RFQs, managers award them. Auditors use the award register instead. */
+  viewAudit: (user) => hasRole(user, 'ADMIN', 'APPROVER'),
+  /** The RFQ workspace: buyers run RFQs, managers award them. */
   workOnRfqs: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT', 'APPROVER'),
-  viewAwardRegister: (user) => hasRole(user, 'ADMIN', 'APPROVER', 'AUDITOR'),
+  viewAwardRegister: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT', 'APPROVER'),
   createRequest: (user) => hasRole(user, 'ADMIN', 'PROCUREMENT'),
   /** Admins may change any request; buyers only their own. */
   editRequest: (user, request) =>

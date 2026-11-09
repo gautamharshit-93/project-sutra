@@ -51,13 +51,13 @@ public class VendorController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public VendorResponse update(@PathVariable Long id, @Valid @RequestBody VendorRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

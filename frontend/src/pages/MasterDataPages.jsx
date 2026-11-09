@@ -12,8 +12,9 @@ const contactFields = [
 export function VendorsPage() {
   return (
     <CrudPage
-      title="Vendors" singular="Vendor" api={vendorsApi}
+      title="Vendors" singular="Vendor" api={vendorsApi} allowCreate={false}
       description="Suppliers who send quotations, with their contact and business details."
+      notice="Vendors register themselves on the vendor portal (Sign in > Register your company). New sign-ups wait for one-click approval under Users & roles; vendors keep their own contact and GST details up to date."
       fields={[
         { name: 'code', label: 'Code', required: true, hint: 'Letters, digits, dash or underscore' },
         { name: 'name', label: 'Name', required: true },

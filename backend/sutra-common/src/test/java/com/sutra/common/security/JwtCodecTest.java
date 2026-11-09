@@ -39,11 +39,11 @@ class JwtCodecTest {
 
     @Test
     void userTokenCanNeverClaimTheServiceRole() {
-        var forged = new SutraUserPrincipal(1L, "mallory", null, true, Set.of(RoleName.SERVICE, RoleName.AUDITOR));
+        var forged = new SutraUserPrincipal(1L, "mallory", null, true, Set.of(RoleName.SERVICE, RoleName.APPROVER));
 
         var token = jwt.verify(jwt.issue(forged)).orElseThrow();
 
-        assertThat(token.principal().getRoles()).containsExactly(RoleName.AUDITOR);
+        assertThat(token.principal().getRoles()).containsExactly(RoleName.APPROVER);
     }
 
     @Test

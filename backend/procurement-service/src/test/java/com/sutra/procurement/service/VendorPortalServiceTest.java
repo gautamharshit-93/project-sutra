@@ -59,6 +59,8 @@ class VendorPortalServiceTest {
     @Mock MasterDataClient masterData;
     @Mock CurrentUserProvider currentUser;
     @Mock AuditService auditService;
+    @org.mockito.Spy java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-11-09T06:00:00Z"),
+            java.time.ZoneId.of("Asia/Kolkata"));
     @InjectMocks VendorPortalService portal;
 
     private final NamedRef brakeline = Fixtures.vendor("Brakeline Components");
@@ -111,6 +113,16 @@ class VendorPortalServiceTest {
         assertThatThrownBy(() -> portal.submit(rfq.getId(), List.of()))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting("code").isEqualTo("RFQ_CLOSED");
+    }
+
+    @Test
+    void afterTheDueDateTheRfqAcceptsNoMoreQuotations() {
+        rfq.setQuotationsDue(java.time.LocalDate.of(2026, 11, 8)); // the test clock says 9 Nov 2026
+
+        assertThatThrownBy(() -> portal.submit(rfq.getId(), List.of()))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting("code").isEqualTo("RFQ_DUE_DATE_PASSED");
+        verify(quotationService, never()).submitForVendor(any(), any(), any());
     }
 
     @Test

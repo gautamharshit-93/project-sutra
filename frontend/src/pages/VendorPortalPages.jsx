@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { errorMessage } from '../api/client.js';
-import { vendorPortalApi } from '../api/endpoints.js';
+import { errorMessage, fieldErrors } from '../api/client.js';
+import { vendorPortalApi, vendorProfileApi } from '../api/endpoints.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import FilePicker from '../components/FilePicker.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -83,7 +83,9 @@ function RfqCards({ rfqs }) {
           <div className="rfq-meta"><code>{r.rfqNumber}</code> {r.buyer}</div>
           <h3>{r.title}</h3>
           <div className="rfq-meta">
-            {r.itemCount} item(s) · {r.currency}{r.requiredBy ? ` · needed by ${formatDate(r.requiredBy)}` : ''}
+            {r.itemCount} item(s) · {r.currency}
+            {r.quotationsDue ? ` · quotations due ${formatDate(r.quotationsDue)}` : ''}
+            {r.requiredBy ? ` · needed by ${formatDate(r.requiredBy)}` : ''}
           </div>
           <div className="rfq-meta">
             {r.myQuotationId
@@ -154,6 +156,7 @@ export function VendorRfqDetailPage() {
             ? <span className="badge badge-danger">Open</span> : <span className="badge badge-neutral">Closed</span>}</h1>
           <p className="muted">
             <code>{r.rfqNumber}</code> · {r.buyer} · prices in {r.currency}
+            {r.quotationsDue ? ` · quotations due ${formatDate(r.quotationsDue)}` : ''}
             {r.requiredBy ? ` · needed by ${formatDate(r.requiredBy)}` : ''} · published {formatDate(r.publishedAt)}
           </p>
           {r.description && <p>{r.description}</p>}
@@ -181,6 +184,9 @@ export function VendorRfqDetailPage() {
 
       {mine.length > 0 && <MyQuotations quotations={mine} onWithdraw={setWithdrawing} />}
 
+      {!r.openForQuotations && mine.length === 0 && r.quotationsDue && (
+        <div className="notice notice-info">Quotations for this RFQ were due by {formatDate(r.quotationsDue)}; it no longer accepts new ones.</div>
+      )}
       {r.openForQuotations && mine.length === 0 && (
         <section className="card">
           <h2>Send your quotation</h2>
@@ -285,6 +291,73 @@ export function VendorQuotationsPage() {
           </table>
         ) : <EmptyState title="No quotations yet">Open an RFQ and send your quotation.</EmptyState>}
       </section>
+    </div>
+  );
+}
+
+const PROFILE_FIELDS = [
+  ['contactPerson', 'Contact person'], ['email', 'Email'], ['phone', 'Phone'], ['taxNumber', 'GST / tax number'],
+  ['website', 'Website'], ['address', 'Address'],
+];
+
+/** The supplier keeps its own contact and GST details current; the name and code stay as approved. */
+export function VendorProfilePage() {
+  const { notify } = useToast();
+  const profile = useApi(() => vendorProfileApi.get(), []);
+  const [values, setValues] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (profile.data && !values) {
+      setValues(Object.fromEntries(PROFILE_FIELDS.map(([k]) => [k, profile.data[k] || ''])));
+    }
+  }, [profile.data, values]);
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setErrors({});
+    setError('');
+    try {
+      const body = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.trim() || null]));
+      profile.setData(await vendorProfileApi.update(body));
+      notify('Company profile saved');
+    } catch (err) {
+      setErrors(fieldErrors(err));
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <h1>Company profile</h1>
+          <p className="muted">Buyers see these details with your quotations. Keep them current.</p>
+        </div>
+      </div>
+      <ErrorBanner message={profile.error} onRetry={profile.reload} />
+      {!values ? <Spinner /> : (
+        <form className="card form-grid" onSubmit={save} noValidate>
+          <ErrorBanner message={error} />
+          <Field label="Company"><input value={profile.data.name} disabled /></Field>
+          <Field label="Vendor code"><input value={profile.data.code} disabled /></Field>
+          {PROFILE_FIELDS.map(([key, label]) => (
+            <Field key={key} label={label} error={errors[key]} wide={key === 'address'}>
+              {key === 'address'
+                ? <textarea rows={2} value={values[key]} onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))} />
+                : <input value={values[key]} onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))} />}
+            </Field>
+          ))}
+          <div className="field-wide row-end">
+            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

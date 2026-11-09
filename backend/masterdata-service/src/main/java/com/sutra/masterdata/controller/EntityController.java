@@ -47,21 +47,22 @@ public class EntityController {
         return service.get(id);
     }
 
+    /** Buyers may add the company / plant they buy for while creating an RFQ. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public EntityResponse create(@Valid @RequestBody EntityRequest request) {
         return service.create(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public EntityResponse update(@PathVariable Long id, @Valid @RequestBody EntityRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
@@ -74,20 +75,20 @@ public class EntityController {
 
     @PostMapping("/{id}/sub-entities")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public SubEntityResponse createSubEntity(@PathVariable Long id, @Valid @RequestBody SubEntityRequest request) {
         return service.createSubEntity(id, request);
     }
 
     @PutMapping("/{id}/sub-entities/{subId}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public SubEntityResponse updateSubEntity(@PathVariable Long id, @PathVariable Long subId,
                                              @Valid @RequestBody SubEntityRequest request) {
         return service.updateSubEntity(id, subId, request);
     }
 
     @DeleteMapping("/{id}/sub-entities/{subId}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public ResponseEntity<Void> deleteSubEntity(@PathVariable Long id, @PathVariable Long subId) {
         service.deleteSubEntity(id, subId);
         return ResponseEntity.noContent().build();

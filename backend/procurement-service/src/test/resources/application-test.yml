@@ -7,6 +7,8 @@ spring:
     password: ${DB_PASSWORD:sutra_pass}
   flyway:
     clean-disabled: false
+    placeholders:
+      crossSchemaFks: "false"   # master data and users are mocked here
 
 sutra:
   ai:

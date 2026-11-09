@@ -71,6 +71,10 @@ public class PurchaseRequest extends AuditableEntity {
     @Column(name = "required_by")
     private LocalDate requiredBy;
 
+    /** Last day vendors may send quotations through the portal (inclusive); null = until the RFQ is compared. */
+    @Column(name = "quotations_due")
+    private LocalDate quotationsDue;
+
     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("lineNumber")
     private List<RequestItem> items = new ArrayList<>();
@@ -86,5 +90,10 @@ public class PurchaseRequest extends AuditableEntity {
 
     public int nextLineNumber() {
         return items.stream().mapToInt(RequestItem::getLineNumber).max().orElse(0) + 1;
+    }
+
+    /** Vendors may submit while the RFQ is open and its due date (if any) has not passed. */
+    public boolean acceptsVendorQuotations(LocalDate today) {
+        return status == PurchaseRequestStatus.OPEN && (quotationsDue == null || !today.isAfter(quotationsDue));
     }
 }

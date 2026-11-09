@@ -29,6 +29,9 @@ spring:
     default-schema: masterdata
     # The SQL in /database/masterdata is the single source of truth for this service's schema.
     locations: ${MASTERDATA_MIGRATIONS:filesystem:../../database/masterdata}
+    # Foreign keys into other services' schemas (same database); off where a schema is tested alone.
+    placeholders:
+      crossSchemaFks: ${CROSS_SCHEMA_FKS:true}
 
 sutra:
   security:

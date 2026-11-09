@@ -13,7 +13,7 @@ const VIEWS = [
 
 /**
  * Read-only register of RFQs that reached the award stage: those being compared, awarded or rejected. It is the
- * auditor's and manager's view; opening one shows its comparison, decision and full history.
+ * buyers' and managers' view; opening one shows its comparison, decision and full history.
  */
 export default function AwardRegisterPage() {
   const [status, setStatus] = useState('UNDER_REVIEW');
@@ -34,7 +34,7 @@ export default function AwardRegisterPage() {
         {list.loading && !list.data ? <Spinner /> : list.data?.content?.length ? (
           <>
             <table className="table">
-              <thead><tr><th>RFQ</th><th>Title</th><th>Company</th><th>Status</th><th>Raised by</th><th>Created</th></tr></thead>
+              <thead><tr><th>RFQ</th><th>Title</th><th>Company</th><th>Status</th><th>Raised by</th><th>Created</th><th /></tr></thead>
               <tbody>
                 {list.data.content.map((pr) => (
                   <tr key={pr.id}>
@@ -44,6 +44,12 @@ export default function AwardRegisterPage() {
                     <td><StatusBadge status={pr.status} /></td>
                     <td>{pr.requestedBy}</td>
                     <td>{formatDate(pr.createdAt)}</td>
+                    <td className="actions-col">
+                      {['APPROVED', 'REJECTED'].includes(pr.status) && (
+                        <button type="button" className="btn btn-small"
+                                onClick={() => purchaseRequestsApi.downloadAwardSummary(pr.id, pr.requestNumber)}>PDF</button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

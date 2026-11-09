@@ -63,7 +63,9 @@ public class BusinessEntityService {
     }
 
     public EntityResponse create(EntityRequest request) {
-        String code = normaliseCode(request.code());
+        String code = request.code() == null || request.code().isBlank()
+                ? codeFromName(request.name(), entityRepository::existsByCodeIgnoreCase)
+                : normaliseCode(request.code());
         if (entityRepository.existsByCodeIgnoreCase(code)) {
             throw new DuplicateResourceException("An entity with code " + code + " already exists");
         }
@@ -76,7 +78,7 @@ public class BusinessEntityService {
 
     public EntityResponse update(Long id, EntityRequest request) {
         BusinessEntity entity = find(id);
-        String code = normaliseCode(request.code());
+        String code = request.code() == null || request.code().isBlank() ? entity.getCode() : normaliseCode(request.code());
         if (entityRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
             throw new DuplicateResourceException("An entity with code " + code + " already exists");
         }
@@ -110,7 +112,9 @@ public class BusinessEntityService {
 
     public SubEntityResponse createSubEntity(Long entityId, SubEntityRequest request) {
         BusinessEntity parent = find(entityId);
-        String code = normaliseCode(request.code());
+        String code = request.code() == null || request.code().isBlank()
+                ? codeFromName(request.name(), c -> subEntityRepository.existsByEntityIdAndCodeIgnoreCase(entityId, c))
+                : normaliseCode(request.code());
         if (subEntityRepository.existsByEntityIdAndCodeIgnoreCase(entityId, code)) {
             throw new DuplicateResourceException("Sub-entity code " + code + " already exists under " + parent.getName());
         }
@@ -125,7 +129,7 @@ public class BusinessEntityService {
 
     public SubEntityResponse updateSubEntity(Long entityId, Long subEntityId, SubEntityRequest request) {
         SubEntity sub = findSub(entityId, subEntityId);
-        String code = normaliseCode(request.code());
+        String code = request.code() == null || request.code().isBlank() ? sub.getCode() : normaliseCode(request.code());
         if (subEntityRepository.existsByEntityIdAndCodeIgnoreCaseAndIdNot(entityId, code, subEntityId)) {
             throw new DuplicateResourceException("Sub-entity code " + code + " already exists under this entity");
         }
@@ -180,5 +184,19 @@ public class BusinessEntityService {
 
     static String normaliseCode(String code) {
         return code.trim().toUpperCase(Locale.ROOT);
+    }
+
+    /**
+     * A short unique code made from a name, so people only type the name: "Axiom Auto Components" -> "AXIOMAUTOC",
+     * then "AXIOMAUTOC-2" if that is taken.
+     */
+    public static String codeFromName(String name, java.util.function.Predicate<String> taken) {
+        String letters = name == null ? "" : name.toUpperCase(java.util.Locale.ROOT).replaceAll("[^A-Z0-9]", "");
+        String base = letters.length() >= 2 ? letters.substring(0, Math.min(10, letters.length())) : "CODE" + letters;
+        String code = base;
+        for (int n = 2; taken.test(code); n++) {
+            code = base + "-" + n;
+        }
+        return code;
     }
 }

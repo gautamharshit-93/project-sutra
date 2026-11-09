@@ -7,9 +7,7 @@ import com.sutra.procurement.request.QuotationRequests.QuotationItemRequest;
 import com.sutra.procurement.request.QuotationRequests.QuotationUpdateRequest;
 import com.sutra.procurement.request.QuotationRequests.ResolveFlagRequest;
 import com.sutra.common.web.PageResponse;
-import com.sutra.procurement.response.CrossCheckResponses.CrossCheckResponse;
 import com.sutra.procurement.response.QuotationResponses.QuotationResponse;
-import com.sutra.procurement.service.ExtractionCrossCheckService;
 import com.sutra.procurement.service.QuotationService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,11 +39,9 @@ public class QuotationController {
     private static final String CAN_EDIT = "hasAnyRole('ADMIN','PROCUREMENT')";
 
     private final QuotationService quotationService;
-    private final ExtractionCrossCheckService crossCheckService;
 
-    public QuotationController(QuotationService quotationService, ExtractionCrossCheckService crossCheckService) {
+    public QuotationController(QuotationService quotationService) {
         this.quotationService = quotationService;
-        this.crossCheckService = crossCheckService;
     }
 
     @GetMapping
@@ -103,22 +99,7 @@ public class QuotationController {
         return quotationService.reprocess(id, new ExtractionChoice(engine, model));
     }
 
-    /**
-     * Reads the quotation with each chosen engine (all available engines when none is given) and returns the
-     * graded readings side by side. Nothing is saved. Waits for the engines, so it can take a minute.
-     */
-    @PostMapping("/cross-check")
-    @PreAuthorize(CAN_EDIT)
-    public CrossCheckResponse crossCheck(@PathVariable Long id,
-                                         @RequestParam(required = false) List<ExtractionEngine> engines) {
-        return crossCheckService.crossCheck(id, engines);
-    }
 
-    @PostMapping("/mark-ready")
-    @PreAuthorize(CAN_EDIT)
-    public QuotationResponse markReady(@PathVariable Long id) {
-        return quotationService.markReady(id);
-    }
 
     @PostMapping("/items")
     @ResponseStatus(HttpStatus.CREATED)

@@ -19,10 +19,28 @@ public class MasterDataClient {
     public record VendorSnapshot(Long id, String code, String name, boolean active) {
     }
 
+    /** The vendor to create when a portal sign-up is approved. */
+    public record NewVendor(String name, String contactPerson, String email, String phone, String address,
+                            String taxNumber, String website) {
+    }
+
     private final RestClient client;
 
     public MasterDataClient(InternalRestClients clients, ServiceUrls urls) {
         this.client = clients.forBaseUrl(urls.masterdata());
+    }
+
+    /** Creates the vendor of an approved sign-up (the master data service makes its code). */
+    public VendorSnapshot registerVendor(NewVendor vendor) {
+        try {
+            VendorSnapshot created = client.post().uri("/internal/vendors").body(vendor).retrieve().body(VendorSnapshot.class);
+            if (created == null) {
+                throw new ServiceUnavailableException("master data service", null);
+            }
+            return created;
+        } catch (RestClientException e) {
+            throw new ServiceUnavailableException("master data service", e);
+        }
     }
 
     /** The vendor, which must exist and be active. */

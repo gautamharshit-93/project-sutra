@@ -1,9 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { assistantApi } from '../api/endpoints.js';
+import { assistantApi, entitiesApi, purchaseRequestsApi } from '../api/endpoints.js';
 import { errorMessage } from '../api/client.js';
+import { useApi } from '../hooks/useApi.js';
+import { formatDate } from '../utils/format.js';
+import { draftToForm, itemsComplete, matchByName, toRequest } from '../utils/rfqDraft.js';
+import { ACCEPTED_FILES } from './FilePicker.jsx';
 import Icon from './Icon.jsx';
+import NewRfqModal from './NewRfqModal.jsx';
 
 /**
  * SUTRA Sahayak: a read-only assistant that answers questions about RFQs and quotations in Hindi, Hinglish or
@@ -21,7 +26,7 @@ const COPY = {
     title: 'SUTRA Sahayak',
     subtitle: 'Ask about RFQs, quotations, flags and comparisons',
     placeholder: 'Ask anything…',
-    hello: 'Hi! I can tell you what is happening with your RFQs and quotations: what needs review, why a quotation was flagged, which complete quotation is lowest, and where to do something in SUTRA. I can read, but I never change data.',
+    hello: 'Hi! Ask me what is happening with your RFQs and quotations: what needs review, why a quotation was flagged, which complete quotation is lowest. To create an RFQ, paste it here or attach the file with the clip: I fill in everything and you confirm with one click.',
     thinking: 'Reading the latest data…',
     clear: 'New chat',
     listen: 'Speak (English)',
@@ -36,7 +41,7 @@ const COPY = {
     title: 'SUTRA सहायक',
     subtitle: 'RFQ, कोटेशन, फ़्लैग और तुलना के बारे में पूछें',
     placeholder: 'कुछ भी पूछें…',
-    hello: 'नमस्ते! मैं आपके RFQ और कोटेशन की जानकारी दे सकता हूँ: किसे रिव्यू चाहिए, कोटेशन पर फ़्लैग क्यों है, कौन-सा पूरा कोटेशन सबसे सस्ता है, और SUTRA में कोई काम कहाँ करना है। मैं सिर्फ़ पढ़ता हूँ, कोई डेटा नहीं बदलता।',
+    hello: 'नमस्ते! RFQ और कोटेशन के बारे में पूछिए: किसे रिव्यू चाहिए, फ़्लैग क्यों है, सबसे सस्ता पूरा कोटेशन कौन-सा है। नया RFQ बनाना हो तो उसे यहाँ पेस्ट करें या क्लिप से फ़ाइल जोड़ें: मैं सब भर दूँगा, आप एक क्लिक में पक्का करें।',
     thinking: 'ताज़ा डेटा पढ़ रहा हूँ…',
     clear: 'नई बातचीत',
     listen: 'बोलें (हिंदी)',
@@ -102,8 +107,85 @@ function Rich({ text }) {
 
 const SpeechRecognition = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
-function Panel({ onClose, status }) {
+/**
+ * An RFQ Sahayak read from pasted text or an attached file. One click creates it (header and all items) as a Draft;
+ * "Edit first" opens the full New RFQ window with everything filled in. Nothing is saved before the click.
+ */
+function RfqDraftCard({ draft, created, onCreated, onEdit }) {
   const navigate = useNavigate();
+  const entities = useApi(() => entitiesApi.list({ size: 200 }), []);
+  const list = (entities.data?.content || []).filter((e) => e.active);
+  const [entityId, setEntityId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const { values, items } = draftToForm(draft, [], []);
+  const chosen = entityId || String(matchByName(list, draft.buyerName)?.id || '');
+  const complete = itemsComplete(items);
+
+  async function create() {
+    setBusy(true);
+    setError('');
+    try {
+      const { request, items: lines } = toRequest({ ...values, entityId: chosen }, items);
+      const pr = await purchaseRequestsApi.createWithItems(request, lines, false);
+      onCreated(pr);
+      navigate(`/purchase-requests/${pr.id}`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="draft-card">
+      <div className="draft-card-head">
+        <span className="badge badge-info">RFQ draft</span>
+        <strong>{draft.title}</strong>
+        <span className="muted small">
+          {draft.items.length} item(s){draft.requiredBy ? ` · needed by ${formatDate(draft.requiredBy)}` : ''} · from {draft.source}
+        </span>
+      </div>
+      <ul className="draft-card-items">
+        {draft.items.slice(0, 6).map((it, i) => (
+          <li key={i}>
+            <span>{it.itemCode ? <code>{it.itemCode}</code> : null} {it.description}</span>
+            <span className={it.quantity == null ? 'draft-missing' : ''}>{it.quantity ?? '?'} {it.unitOfMeasure}</span>
+          </li>
+        ))}
+        {draft.items.length > 6 && <li className="muted">and {draft.items.length - 6} more</li>}
+      </ul>
+      {draft.warnings?.length > 0 && (
+        <p className="draft-card-warn"><Icon name="alert" size={14} /> {draft.warnings.length} thing(s) to check: {draft.warnings[0]}</p>
+      )}
+      {created ? (
+        <p className="draft-card-done"><Icon name="check" size={14} /> Created {created.requestNumber} as a draft.</p>
+      ) : (
+        <>
+          <label className="draft-card-entity">
+            <span>Entity</span>
+            <select value={chosen} onChange={(e) => setEntityId(e.target.value)}>
+              <option value="">Select the company / plant buying</option>
+              {list.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </label>
+          {error && <p className="draft-card-error">{error}</p>}
+          <div className="draft-card-actions">
+            <button type="button" className="btn btn-small" onClick={() => onEdit(draft)}>Edit first</button>
+            <button type="button" className="btn btn-primary btn-small" disabled={!chosen || !complete || busy} onClick={create}
+                    title={!complete ? 'Some lines have no quantity: use Edit first' : undefined}>
+              {busy ? 'Creating…' : 'Create RFQ'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Panel({ onClose, status, onEditDraft, canDraft }) {
+  const navigate = useNavigate();
+  const fileRef = useRef(null);
   const screen = useScreenContext();
   const [saved] = useState(loadChat);
   const [lang, setLang] = useState(saved?.lang || 'en');
@@ -139,13 +221,37 @@ function Panel({ onClose, status }) {
         purchaseRequestId: screen?.purchaseRequestId ?? null,
         quotationId: screen?.quotationId ?? null,
       });
-      setMessages((m) => [...m, { role: 'assistant', text: answer.reply, links: answer.links || [] }]);
+      setMessages((m) => [...m, { role: 'assistant', text: answer.reply, links: answer.links || [], rfqDraft: answer.rfqDraft || null }]);
     } catch (err) {
       setMessages((m) => [...m, { role: 'assistant', text: errorMessage(err), error: true }]);
     } finally {
       setBusy(false);
     }
   }, [busy, messages, screen]);
+
+  /** An RFQ file attached with the clip: read into a draft card, nothing saved. */
+  async function attach(fileList) {
+    const files = Array.from(fileList || []);
+    if (fileRef.current) fileRef.current.value = '';
+    if (!files.length || busy) return;
+    setMessages((m) => [...m, { role: 'user', text: `Attached: ${files.map((f) => f.name).join(', ')}` }]);
+    setBusy(true);
+    try {
+      const rfqDraft = await purchaseRequestsApi.draftFromFiles(files);
+      const text = lang === 'hi'
+        ? 'मैंने RFQ पढ़ लिया है। नीचे जाँचें और "Create RFQ" दबाएँ।'
+        : 'I read the RFQ. Check the draft below and click "Create RFQ".';
+      setMessages((m) => [...m, { role: 'assistant', text, rfqDraft }]);
+    } catch (err) {
+      setMessages((m) => [...m, { role: 'assistant', text: errorMessage(err), error: true }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function markCreated(index, pr) {
+    setMessages((m) => m.map((msg, i) => (i === index ? { ...msg, created: { id: pr.id, requestNumber: pr.requestNumber } } : msg)));
+  }
 
   function toggleListening() {
     if (listening) { recognition.current?.stop(); return; }
@@ -202,6 +308,10 @@ function Panel({ onClose, status }) {
             {m.role !== 'user' && <span className="msg-avatar msg-avatar-bot"><Icon name="sparkle" size={14} /></span>}
             <div className="msg-bubble">
               <Rich text={m.text} />
+              {m.rfqDraft && (
+                <RfqDraftCard draft={m.rfqDraft} created={m.created} onCreated={(pr) => markCreated(i, pr)}
+                              onEdit={(d) => onEditDraft(d, (pr) => markCreated(i, pr))} />
+              )}
               {m.links?.length > 0 && (
                 <div className="msg-links">
                   {m.links.map((l) => (
@@ -235,8 +345,18 @@ function Panel({ onClose, status }) {
             <Icon name="trash" size={17} />
           </button>
         )}
+        {canDraft && (
+          <>
+            <input ref={fileRef} type="file" multiple hidden accept={ACCEPTED_FILES} aria-hidden="true"
+                   onChange={(e) => attach(e.target.files)} />
+            <button type="button" className="assistant-icon-btn" onClick={() => fileRef.current?.click()}
+                    disabled={disabled || busy} title="Attach an RFQ file" aria-label="Attach an RFQ file">
+              <Icon name="file" size={17} />
+            </button>
+          </>
+        )}
         <textarea ref={inputRef} rows={1} value={draft} placeholder={t.placeholder} disabled={disabled}
-                  maxLength={2000} aria-label={t.placeholder} onChange={(e) => setDraft(e.target.value)}
+                  maxLength={20000} aria-label={t.placeholder} onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(draft); } }} />
         {SpeechRecognition && (
           <button type="button" className={`assistant-icon-btn${listening ? ' listening' : ''}`} onClick={toggleListening}
@@ -252,9 +372,12 @@ function Panel({ onClose, status }) {
   );
 }
 
-export function AssistantProvider({ enabled, children }) {
+/** `canDraft`: the user may create RFQs, so the chat offers the clip and RFQ draft cards. */
+export function AssistantProvider({ enabled, canDraft = false, children }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null);
+  const [editing, setEditing] = useState(null); // { draft, onCreated } while the full New RFQ window is open
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -271,6 +394,7 @@ export function AssistantProvider({ enabled, children }) {
   }, [open]);
 
   const value = useMemo(() => ({ open, setOpen, available: enabled }), [open, enabled]);
+  const editDraft = useCallback((draft, onCreated) => { setOpen(false); setEditing({ draft, onCreated }); }, []);
   return (
     <AssistantContext.Provider value={value}>
       {children}
@@ -279,10 +403,17 @@ export function AssistantProvider({ enabled, children }) {
           <>
             <motion.div key="scrim" className="assistant-scrim" onClick={() => setOpen(false)}
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
-            <Panel key="panel" status={status} onClose={() => setOpen(false)} />
+            <Panel key="panel" status={status} onClose={() => setOpen(false)} onEditDraft={editDraft} canDraft={canDraft} />
           </>
         )}
       </AnimatePresence>
+      {editing && (
+        <NewRfqModal initialDraft={editing.draft} onClose={() => setEditing(null)} onCreated={(pr) => {
+          editing.onCreated(pr);
+          setEditing(null);
+          navigate(`/purchase-requests/${pr.id}`);
+        }} />
+      )}
     </AssistantContext.Provider>
   );
 }

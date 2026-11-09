@@ -25,6 +25,8 @@ sutra:
     token-check-cache-seconds: 15
     # Cross-checking a quotation with every engine can take minutes.
     request-timeout-seconds: 600
+    # Sign-in and vendor sign-up: requests per minute from one IP address.
+    public-rate-limit-per-minute: ${SUTRA_PUBLIC_RATE_LIMIT:20}
     # First match wins: the audit service serves the history paths before procurement's general routes.
     routes:
       - service: auth service
@@ -32,7 +34,7 @@ sutra:
         paths: [/api/auth/**, /api/users/**]
       - service: master data service
         url: ${MASTERDATA_URL:http://localhost:8082}
-        paths: [/api/entities/**, /api/customers/**, /api/vendors/**]
+        paths: [/api/entities/**, /api/customers/**, /api/vendors/**, /api/vendor-profile/**, /api/vendor-profile]
       - service: audit service
         url: ${AUDIT_URL:http://localhost:8084}
         paths: [/api/audit-logs/**, /api/purchase-requests/*/history, /api/quotations/*/history]

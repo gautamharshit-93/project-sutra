@@ -33,9 +33,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class VendorPortalController {
 
     private final VendorPortalService portal;
+    private final com.sutra.procurement.service.BadgeService badges;
 
-    public VendorPortalController(VendorPortalService portal) {
+    public VendorPortalController(VendorPortalService portal, com.sutra.procurement.service.BadgeService badges) {
         this.portal = portal;
+        this.badges = badges;
+    }
+
+    /** Menu badges: open RFQs not quoted on yet, and quotations that have an outcome. */
+    @GetMapping("/badges")
+    public com.sutra.procurement.service.BadgeService.VendorBadges badges() {
+        return badges.vendor();
     }
 
     /** RFQs open for quotations, plus those this vendor quoted on. */

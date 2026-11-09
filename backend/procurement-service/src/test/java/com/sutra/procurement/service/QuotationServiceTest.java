@@ -176,26 +176,14 @@ class QuotationServiceTest {
     }
 
     @Test
-    void cannotMarkReadyWhileErrorsAreOpen() {
-        Quotation q = stored(Fixtures.quotation(pr, vendor));
-        Fixtures.item(q, pr.getItems().get(0), "Laptop", "10", null, null); // missing price -> ERROR
+    void aSecondQuotationFromTheSameVendorIsRefused() {
+        when(quotationRepository.findByPurchaseRequestIdAndVendorId(pr.getId(), vendor.getId()))
+                .thenReturn(List.of(Fixtures.quotation(pr, vendor)));
+        var second = new MockMultipartFile("files", "second.pdf", "application/pdf", PDF);
 
-        assertThatThrownBy(() -> service.markReady(q.getId()))
-                .isInstanceOf(BusinessRuleException.class)
-                .extracting("code").isEqualTo("OPEN_ERRORS");
-    }
-
-    @Test
-    void markReadyAcknowledgesWarningsInTheNameOfTheReviewer() {
-        Quotation q = stored(Fixtures.quotation(pr, vendor));
-        Fixtures.item(q, pr.getItems().get(0), "Laptop", "10", "68500", null); // monitors not quoted -> WARNING
-
-        var response = service.markReady(q.getId());
-
-        assertThat(response.status()).isEqualTo(QuotationStatus.READY_FOR_COMPARISON);
-        assertThat(q.getFlags()).filteredOn(f -> f.getSeverity() == FlagSeverity.WARNING)
-                .isNotEmpty()
-                .allMatch(f -> f.isResolved() && f.getResolvedBy().getId().equals(buyer.getId()));
+        assertThatThrownBy(() -> service.upload(pr.getId(), vendor.getId(), List.of(second)))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessageContaining("already has a quotation");
     }
 
     @Test
@@ -215,7 +203,8 @@ class QuotationServiceTest {
         Quotation q = stored(Fixtures.quotation(pr, vendor));
         q.setStatus(QuotationStatus.PROCESSING);
 
-        assertThatThrownBy(() -> service.markReady(q.getId()))
+        assertThatThrownBy(() -> service.addItem(q.getId(), new QuotationItemRequest(pr.getItems().get(0).getId(), null,
+                "Laptop", new BigDecimal("10"), "Nos", new BigDecimal("68500"), null, null, null, null, null, null)))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting("code").isEqualTo("QUOTATION_PROCESSING");
     }
@@ -229,7 +218,7 @@ class QuotationServiceTest {
         var response = service.addItem(q.getId(), new QuotationItemRequest(pr.getItems().get(0).getId(), null, "Laptop",
                 new BigDecimal("10"), "Nos", new BigDecimal("68500"), null, null, null, null, null, null));
 
-        assertThat(response.status()).isEqualTo(QuotationStatus.NEEDS_REVIEW); // monitors still missing
+        assertThat(response.status()).isEqualTo(QuotationStatus.READY_FOR_COMPARISON); // missing monitors are a note
         assertThat(response.failureReason()).isNull();
         assertThat(response.extractionSource()).isEqualTo(com.sutra.procurement.entity.enums.ExtractionSource.MANUAL);
     }

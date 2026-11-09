@@ -15,8 +15,9 @@ public final class MasterDataRequests {
     private MasterDataRequests() {
     }
 
+    /** {@code code} may be left blank on create: one is made from the name. */
     public record EntityRequest(
-            @NotBlank @Pattern(regexp = CODE_REGEX, message = CODE_MSG) String code,
+            @Pattern(regexp = CODE_REGEX, message = CODE_MSG) String code,
             @NotBlank @Size(max = 200) String name,
             @Size(max = 2000) String description,
             @Size(max = 1000) String address,
@@ -24,7 +25,7 @@ public final class MasterDataRequests {
     }
 
     public record SubEntityRequest(
-            @NotBlank @Pattern(regexp = CODE_REGEX, message = CODE_MSG) String code,
+            @Pattern(regexp = CODE_REGEX, message = CODE_MSG) String code,
             @NotBlank @Size(max = 200) String name,
             @Size(max = 2000) String description,
             Boolean active) {
@@ -51,5 +52,26 @@ public final class MasterDataRequests {
             @Size(max = 50) String taxNumber,
             @Size(max = 255) String website,
             Boolean active) {
+    }
+
+    /** A vendor that signed up on the portal and was approved (sent by the auth service; the code is generated). */
+    public record VendorSignupRequest(
+            @NotBlank @Size(max = 200) String name,
+            @Size(max = 150) String contactPerson,
+            @Email @Size(max = 255) String email,
+            @Pattern(regexp = PHONE_REGEX, message = "invalid phone number") String phone,
+            @Size(max = 1000) String address,
+            @Size(max = 50) String taxNumber,
+            @Size(max = 255) String website) {
+    }
+
+    /** What a vendor may change about itself on the portal (the name and code stay as approved). */
+    public record VendorProfileRequest(
+            @Size(max = 150) String contactPerson,
+            @Email @Size(max = 255) String email,
+            @Pattern(regexp = PHONE_REGEX, message = "invalid phone number") String phone,
+            @Size(max = 1000) String address,
+            @Size(max = 50) String taxNumber,
+            @Size(max = 255) String website) {
     }
 }

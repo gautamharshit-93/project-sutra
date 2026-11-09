@@ -14,7 +14,8 @@ public final class RfqDraftResponses {
      * UI matches against the entities and customers it knows. {@code source} names the files, or "pasted text".
      */
     public record RfqDraft(String title, String description, String requiredBy, String currency, String buyerName,
-                           String customerName, List<RfqDraftItem> items, List<String> warnings, String source) {
+                           String customerName, List<RfqDraftItem> items, List<String> warnings, String source,
+                           String quotationsDue) {
     }
 
     /** {@code quantity} is null when the RFQ did not state one; the buyer must fill it before saving. */

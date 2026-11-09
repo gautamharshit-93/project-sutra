@@ -62,18 +62,18 @@ public final class VendorPortalResponses {
 
     public record RfqSummary(Long id, String rfqNumber, String title, String buyer, String currency,
                              LocalDate requiredBy, int itemCount, boolean openForQuotations, Instant publishedAt,
-                             Long myQuotationId, Stage myQuotationStage, Outcome outcome) {
+                             Long myQuotationId, Stage myQuotationStage, Outcome outcome, LocalDate quotationsDue) {
     }
 
     public record RfqDetail(Long id, String rfqNumber, String title, String description, String buyer,
                             String currency, LocalDate requiredBy, boolean openForQuotations, Instant publishedAt,
-                            List<RfqItem> items, List<VendorQuotation> myQuotations) {
+                            List<RfqItem> items, List<VendorQuotation> myQuotations, LocalDate quotationsDue) {
 
-        public static RfqDetail of(PurchaseRequest pr, List<VendorQuotation> mine) {
+        public static RfqDetail of(PurchaseRequest pr, List<VendorQuotation> mine, java.time.LocalDate today) {
             return new RfqDetail(pr.getId(), pr.getRequestNumber(), pr.getTitle(), pr.getDescription(),
                     pr.getEntity().getName(), pr.getCurrency(), pr.getRequiredBy(),
-                    pr.getStatus() == PurchaseRequestStatus.OPEN, pr.getCreatedAt(),
-                    pr.getItems().stream().map(RfqItem::from).toList(), mine);
+                    pr.acceptsVendorQuotations(today), pr.getCreatedAt(),
+                    pr.getItems().stream().map(RfqItem::from).toList(), mine, pr.getQuotationsDue());
         }
     }
 }

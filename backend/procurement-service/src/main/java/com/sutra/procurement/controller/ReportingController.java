@@ -19,10 +19,19 @@ public class ReportingController {
 
     private final DashboardService dashboardService;
     private final ComparisonService comparisonService;
+    private final com.sutra.procurement.service.BadgeService badges;
 
-    public ReportingController(DashboardService dashboardService, ComparisonService comparisonService) {
+    public ReportingController(DashboardService dashboardService, ComparisonService comparisonService,
+                               com.sutra.procurement.service.BadgeService badges) {
         this.dashboardService = dashboardService;
         this.comparisonService = comparisonService;
+        this.badges = badges;
+    }
+
+    /** Counts for the menu badges: RFQs ready to compare (buyers), RFQs waiting for an award (managers). */
+    @GetMapping("/dashboard/badges")
+    public com.sutra.procurement.service.BadgeService.StaffBadges badges() {
+        return badges.staff();
     }
 
     @GetMapping("/dashboard")

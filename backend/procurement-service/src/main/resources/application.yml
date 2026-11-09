@@ -30,6 +30,9 @@ spring:
     default-schema: procurement
     # The SQL in /database/procurement is the single source of truth for this service's schema.
     locations: ${PROCUREMENT_MIGRATIONS:filesystem:../../database/procurement}
+    # Foreign keys into other services' schemas (same database); off where a schema is tested alone.
+    placeholders:
+      crossSchemaFks: ${CROSS_SCHEMA_FKS:true}
   servlet:
     multipart:
       max-file-size: ${SUTRA_MAX_FILE_MB:20}MB

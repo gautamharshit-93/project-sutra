@@ -11,6 +11,8 @@ import com.sutra.masterdata.exception.VendorNotFoundException;
 import com.sutra.masterdata.client.UsageClient;
 import com.sutra.masterdata.repository.VendorRepository;
 import com.sutra.masterdata.request.MasterDataRequests.VendorRequest;
+import com.sutra.masterdata.request.MasterDataRequests.VendorProfileRequest;
+import com.sutra.masterdata.request.MasterDataRequests.VendorSignupRequest;
 import com.sutra.masterdata.response.MasterDataResponses.VendorResponse;
 import com.sutra.common.web.PageResponse;
 import com.sutra.common.util.Text;
@@ -56,6 +58,31 @@ public class VendorService {
         apply(vendor, request, code);
         vendor = vendorRepository.save(vendor);
         auditService.record(AUDIT_TYPE, vendor.getId(), "CREATED", details("code", code, "name", vendor.getName()));
+        return VendorResponse.from(vendor);
+    }
+
+    /** A vendor approved after signing up on the portal; its code is made from the name. */
+    public VendorResponse register(VendorSignupRequest request) {
+        String code = BusinessEntityService.codeFromName(request.name(), vendorRepository::existsByCodeIgnoreCase);
+        Vendor vendor = new Vendor();
+        apply(vendor, new VendorRequest(code, request.name(), request.contactPerson(), request.email(), request.phone(),
+                request.address(), request.taxNumber(), request.website(), true), code);
+        vendor = vendorRepository.save(vendor);
+        auditService.record(AUDIT_TYPE, vendor.getId(), "CREATED", details("code", code, "name", vendor.getName(),
+                "via", "vendor sign-up"));
+        return VendorResponse.from(vendor);
+    }
+
+    /** A vendor updating its own contact and tax details on the portal. */
+    public VendorResponse updateProfile(Long id, VendorProfileRequest request) {
+        Vendor vendor = find(id);
+        vendor.setContactPerson(Text.blankToNull(request.contactPerson()));
+        vendor.setEmail(Text.blankToNull(request.email()));
+        vendor.setPhone(Text.blankToNull(request.phone()));
+        vendor.setAddress(Text.blankToNull(request.address()));
+        vendor.setTaxNumber(Text.blankToNull(request.taxNumber()));
+        vendor.setWebsite(Text.blankToNull(request.website()));
+        auditService.record(AUDIT_TYPE, id, "PROFILE_UPDATED", details("by", "vendor"));
         return VendorResponse.from(vendor);
     }
 

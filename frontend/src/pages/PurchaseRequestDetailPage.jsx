@@ -5,7 +5,6 @@ import { purchaseRequestsApi, vendorsApi } from '../api/endpoints.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import ApprovalPanel from '../components/ApprovalPanel.jsx';
 import ComparisonMatrix from '../components/ComparisonMatrix.jsx';
-import EnginePicker, { parseChoice } from '../components/EnginePicker.jsx';
 import FilePicker from '../components/FilePicker.jsx';
 import HistoryTimeline from '../components/HistoryTimeline.jsx';
 import PurchaseRequestForm from '../components/PurchaseRequestForm.jsx';
@@ -27,7 +26,7 @@ export default function PurchaseRequestDetailPage() {
   const { user } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('items');
+  const [tab, setTab] = useState(null); // chosen once the quotations are known
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState(null);
 
@@ -35,6 +34,9 @@ export default function PurchaseRequestDetailPage() {
   const quotations = useApi(() => purchaseRequestsApi.quotations(id), [id]);
   const comparisons = useApi(() => purchaseRequestsApi.comparisons(id), [id]);
   const approvals = useApi(() => purchaseRequestsApi.approvals(id), [id]);
+
+  // Land where the work is: the quotations once vendors have sent some, otherwise the requested items
+  const shownTab = tab || (quotations.data?.length ? 'quotations' : 'items');
 
   // Extraction runs in the background: refresh while any quotation is still being processed.
   const processing = (quotations.data || []).some((q) => IN_PROGRESS.includes(q.status));
@@ -82,6 +84,7 @@ export default function PurchaseRequestDetailPage() {
           <p className="muted">
             {request.requestNumber} · {request.entityName}{request.subEntityName ? ` / ${request.subEntityName}` : ''}
             {request.customerName ? ` · for ${request.customerName}` : ''} · requested by {request.requestedBy}
+            {request.quotationsDue ? ` · quotations due ${formatDate(request.quotationsDue)}` : ''}
             {request.requiredBy ? ` · needed by ${formatDate(request.requiredBy)}` : ''} · {request.currency}
           </p>
           {request.description && <p>{request.description}</p>}
@@ -110,7 +113,7 @@ export default function PurchaseRequestDetailPage() {
 
       <Steps request={request} quotations={quotations.data || []} comparisons={comparisons.data || []} />
 
-      <Tabs active={tab} onChange={setTab} tabs={[
+      <Tabs active={shownTab} onChange={setTab} tabs={[
         { id: 'items', label: 'Requested items', count: request.items.length },
         { id: 'quotations', label: 'Quotations', count: quotations.data?.length ?? 0 },
         { id: 'comparison', label: 'Comparison', count: comparisons.data?.length ?? 0 },
@@ -118,21 +121,24 @@ export default function PurchaseRequestDetailPage() {
         { id: 'history', label: 'History' },
       ]} />
 
-      {tab === 'items' && <ItemsSection request={request} editable={editable} onChange={(updated) => { pr.setData(updated); quotations.reload({ silent: true }); }} />}
-      {tab === 'quotations' && (
+      {shownTab === 'items' && <ItemsSection request={request} editable={editable} onChange={(updated) => { pr.setData(updated); quotations.reload({ silent: true }); }} />}
+      {shownTab === 'quotations' && (
         <QuotationsSection request={request} quotations={quotations} canUpload={editable && ['OPEN', 'UNDER_REVIEW'].includes(request.status)}
-                           onUploaded={() => quotations.reload({ silent: true })} />
+                           canCompare={can.editRequest(user, request) && ['OPEN', 'UNDER_REVIEW'].includes(request.status)}
+                           compared={(comparisons.data?.length ?? 0) > 0}
+                           onUploaded={() => quotations.reload({ silent: true })}
+                           onCompared={() => { refreshAll(); setTab('comparison'); }} />
       )}
-      {tab === 'comparison' && (
+      {shownTab === 'comparison' && (
         <ComparisonSection request={request} comparisons={comparisons} quotations={quotations.data || []}
                            canGenerate={can.editRequest(user, request) && ['OPEN', 'UNDER_REVIEW'].includes(request.status)}
                            onGenerated={() => { refreshAll(); }} />
       )}
-      {tab === 'approval' && (
+      {shownTab === 'approval' && (
         <ApprovalPanel request={request} latest={latest} approvals={approvals.data || []}
                        canDecide={can.approve(user, request)} onDecided={() => refreshAll()} />
       )}
-      {tab === 'history' && (
+      {shownTab === 'history' && (
         <HistoryTimeline showRecord load={() => purchaseRequestsApi.history(request.id)}
                          deps={[request.id, request.status, quotations.data, comparisons.data, approvals.data]} />
       )}
@@ -160,7 +166,7 @@ function Steps({ request, quotations, comparisons }) {
   const steps = [
     { label: 'Items added', done: request.items.length > 0, detail: `${request.items.length} item(s)` },
     { label: 'Quotations received', done: quotations.length > 0, detail: `${quotations.length} received` },
-    { label: 'Reviewed', done: ready > 0, detail: `${ready} ready` },
+    { label: 'Ready to compare', done: ready > 0, detail: `${ready} ready` },
     { label: 'Compared', done: comparisons.length > 0, detail: comparisons.length ? `v${comparisons[0].reportVersion}` : 'not yet' },
     { label: 'Awarded', done: ['APPROVED', 'REJECTED'].includes(request.status), detail: request.status === 'APPROVED' ? 'awarded' : request.status === 'REJECTED' ? 'rejected' : 'pending' },
   ];
@@ -295,13 +301,51 @@ function RequestItemForm({ request, item, onClose, onSaved }) {
 
 // ------------------------------------------------------------------ quotations
 
-function QuotationsSection({ request, quotations, canUpload, onUploaded }) {
+/**
+ * Vendors send their quotations through the portal; they are read automatically and are ready to compare. This tab
+ * shows them, with one button to compare. Uploading on a vendor's behalf (e.g. a quotation that came by e-mail) is
+ * tucked away below.
+ */
+function QuotationsSection({ request, quotations, canUpload, canCompare, compared, onUploaded, onCompared }) {
   const navigate = useNavigate();
+  const { notify } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const list = quotations.data || [];
+  const ready = list.filter((q) => q.status === 'READY_FOR_COMPARISON').length;
+  const reading = list.filter((q) => IN_PROGRESS.includes(q.status)).length;
+
+  async function compare() {
+    setBusy(true);
+    try {
+      await purchaseRequestsApi.generateComparison(request.id);
+      notify(`Compared ${ready} quotation(s)`);
+      onCompared();
+    } catch (err) {
+      notify(errorMessage(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
-      {canUpload && <UploadCard request={request} onUploaded={onUploaded} />}
+      {canCompare && list.length > 0 && (
+        <div className="compare-bar">
+          <div>
+            <strong>{ready} of {list.length} quotation(s) ready to compare</strong>
+            <span className="muted small">
+              {reading ? `${reading} still being read… ` : ''}
+              Notes such as a missing warranty stay visible in the comparison. Comparing closes the RFQ to new quotations.
+            </span>
+          </div>
+          <button type="button" className="btn btn-primary" disabled={busy || !ready} onClick={compare}>
+            {busy ? 'Comparing…' : compared ? 'Compare again' : 'Compare now'}
+          </button>
+        </div>
+      )}
       <section className="card card-flush">
-        <div className="card-header card-header-padded"><h2>Received quotations</h2></div>
+        <div className="card-header card-header-padded"><h2>Quotations received from vendors</h2></div>
         <ErrorBanner message={quotations.error} onRetry={quotations.reload} />
         {quotations.data?.length ? (
           <table className="table">
@@ -331,8 +375,20 @@ function QuotationsSection({ request, quotations, canUpload, onUploaded }) {
               ))}
             </tbody>
           </table>
-        ) : <EmptyState title="No quotations yet">Vendors see this RFQ in their portal while it is open and send their quotations there.</EmptyState>}
+        ) : <EmptyState title="No quotations yet">
+              {request.status === 'DRAFT'
+                ? 'Open the RFQ so vendors can see it in their portal and send quotations.'
+                : 'Vendors see this RFQ in their portal and send their quotations there. They appear here automatically.'}
+            </EmptyState>}
       </section>
+      {canUpload && (uploading
+        ? <UploadCard request={request} onUploaded={() => { setUploading(false); onUploaded(); }} />
+        : (
+          <p className="muted small upload-link">
+            A vendor e-mailed its quotation instead?{' '}
+            <button type="button" className="btn-link" onClick={() => setUploading(true)}>Upload it on their behalf</button>
+          </p>
+        ))}
     </>
   );
 }
@@ -342,7 +398,6 @@ function UploadCard({ request, onUploaded }) {
   const vendors = useApi(() => vendorsApi.list({ size: 200 }), []);
   const [vendorId, setVendorId] = useState('');
   const [files, setFiles] = useState([]);
-  const [engine, setEngine] = useState('AUTO');
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
 
@@ -352,8 +407,7 @@ function UploadCard({ request, onUploaded }) {
     setError('');
     setProgress(0);
     try {
-      const choice = parseChoice(engine);
-      const q = await purchaseRequestsApi.upload(request.id, vendorId, files, setProgress, choice.engine, choice.model);
+      const q = await purchaseRequestsApi.upload(request.id, vendorId, files, setProgress);
       notify(`Uploaded ${q.files.length} file(s) for ${q.vendorName}. Extracting data…`);
       setFiles([]);
       onUploaded();
@@ -371,7 +425,7 @@ function UploadCard({ request, onUploaded }) {
         Vendors normally send their quotation themselves through the vendor portal while the RFQ is open. Use this when
         a vendor e-mailed it instead: choose the vendor, then add all of its files for this quotation. Several files (for
         example a PDF quotation and an Excel price list) are read together, and any figure that differs between them is
-        flagged for review.
+        noted for the buyer.
       </p>
       <form className="upload-form" onSubmit={upload}>
         <Field label="Vendor" required>
@@ -382,9 +436,6 @@ function UploadCard({ request, onUploaded }) {
         </Field>
         <Field label="Quotation files" required hint="PDF, Excel (.xlsx, .xls) or Word (.docx); up to 10 files, 20 MB each">
           <FilePicker files={files} onChange={setFiles} label="Quotation files" />
-        </Field>
-        <Field label="Read with" hint="Automatic tries Groq AI first (scanned PDFs are read by OCR) and falls back to the rule-based reader">
-          <EnginePicker id="upload-engine" value={engine} onChange={setEngine} />
         </Field>
         <button type="submit" className="btn btn-primary" disabled={!vendorId || !files.length || progress !== null}>
           {progress !== null ? `Uploading ${progress}%` : 'Upload & extract'}
@@ -425,7 +476,7 @@ function ComparisonSection({ request, comparisons, quotations, canGenerate, onGe
         <div>
           <h2>Side-by-side comparison</h2>
           <p className="muted small">
-            {ready} quotation(s) ready{notReady ? `, ${notReady} still need review and will be excluded` : ''}.
+            {ready} quotation(s) ready{notReady ? `, ${notReady} not yet readable and left out` : ''}.
             Totals are calculated by the system, not taken from the AI.
           </p>
         </div>
@@ -456,7 +507,7 @@ function ComparisonSection({ request, comparisons, quotations, canGenerate, onGe
           <p className="muted small">Version {report.reportVersion} generated by {report.generatedBy} on {formatDateTime(report.generatedAt)}.</p>
           <ComparisonMatrix result={report.result} />
         </>
-      ) : <EmptyState title="No comparison yet">Mark quotations as ready, then generate a comparison.</EmptyState>}
+      ) : <EmptyState title="No comparison yet">Click “Compare now” on the Quotations tab, or Generate comparison above.</EmptyState>}
     </section>
   );
 }

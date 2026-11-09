@@ -18,8 +18,12 @@ public class SutraUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * An unknown username is an ordinary failed sign-in: it must not mark the caller's (login) transaction
+     * rollback-only, or the failure audit is lost and the client gets a 500 instead of a 401.
+     */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, noRollbackFor = UsernameNotFoundException.class)
     public UserDetails loadUserByUsername(String username) {
         return userRepository.findByUsernameIgnoreCase(username)
                 .map(AppUser::toPrincipal)

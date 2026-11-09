@@ -16,6 +16,27 @@ export default function UsersPage() {
   const [deleting, setDeleting] = useState(null);
   const users = useApi(() => usersApi.list({ q: query || undefined, page, size: 20 }), [query, page]);
   const roles = useApi(() => usersApi.roles(), []);
+  const signups = useApi(() => usersApi.vendorSignups(), []);
+  const [deciding, setDeciding] = useState(null);
+
+  async function decide(signup, approve) {
+    setDeciding(signup.userId);
+    try {
+      if (approve) {
+        const user = await usersApi.approveVendor(signup.userId);
+        notify(`${signup.companyName} approved: ${user.username} can now sign in`);
+      } else {
+        await usersApi.rejectVendor(signup.userId);
+        notify(`Sign-up from ${signup.companyName} rejected`);
+      }
+      signups.reload({ silent: true });
+      users.reload({ silent: true });
+    } catch (err) {
+      notify(errorMessage(err), 'error');
+    } finally {
+      setDeciding(null);
+    }
+  }
 
   async function remove() {
     try {
@@ -35,12 +56,38 @@ export default function UsersPage() {
         <div>
           <h1>Users &amp; roles</h1>
           <p className="muted">
-            Company logins (administrator, buyer, manager, auditor) and vendor logins. A vendor login belongs to one
+            Company logins (administrator, buyer, manager) and vendor logins. A vendor login belongs to one
             vendor and only sees open RFQs and its own quotations.
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>New user</button>
       </div>
+
+      {signups.data?.length > 0 && (
+        <div className="card signups">
+          <h2>Vendor sign-ups waiting for approval <span className="tab-count">{signups.data.length}</span></h2>
+          <p className="muted small">Approving creates the vendor and activates its login in one step.</p>
+          <ul className="signup-list">
+            {signups.data.map((s) => (
+              <li key={s.userId}>
+                <div>
+                  <strong>{s.companyName}</strong>
+                  <span className="muted small">
+                    {[s.contactPerson, s.email, s.phone, s.taxNumber && `GST ${s.taxNumber}`].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="muted small">Login <code>{s.username}</code> · signed up {formatDate(s.createdAt)}</span>
+                </div>
+                <div className="signup-actions">
+                  <button type="button" className="btn btn-small btn-danger-text" disabled={deciding === s.userId}
+                          onClick={() => decide(s, false)}>Reject</button>
+                  <button type="button" className="btn btn-small btn-primary" disabled={deciding === s.userId}
+                          onClick={() => decide(s, true)}>{deciding === s.userId ? 'Working…' : 'Approve'}</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {roles.data && (
         <div className="role-legend">
@@ -67,7 +114,7 @@ export default function UsersPage() {
                   <td>{u.email}</td>
                   <td>{u.roles.map(roleLabel).join(', ')}</td>
                   <td>{u.vendorName || '—'}</td>
-                  <td><ActiveBadge active={u.active} /></td>
+                  <td>{u.pendingApproval ? <span className="badge badge-warning">Awaiting approval</span> : <ActiveBadge active={u.active} />}</td>
                   <td>{formatDate(u.createdAt)}</td>
                   <td className="actions-col">
                     <button type="button" className="btn btn-small" onClick={() => setEditing(u)}>Edit</button>

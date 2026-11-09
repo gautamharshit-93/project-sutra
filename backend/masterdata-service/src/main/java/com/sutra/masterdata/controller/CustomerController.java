@@ -45,19 +45,19 @@ public class CustomerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public CustomerResponse create(@Valid @RequestBody CustomerRequest request) {
         return service.create(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public CustomerResponse update(@PathVariable Long id, @Valid @RequestBody CustomerRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(Roles.ADMIN)
+    @PreAuthorize(Roles.BUYER)
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

@@ -23,6 +23,11 @@ public class GatewayApplication {
     }
 
     @Bean
+    java.time.Clock clock() {
+        return java.time.Clock.systemDefaultZone();
+    }
+
+    @Bean
     JwtCodec jwtCodec(SecurityProperties properties) {
         return new JwtCodec(properties);
     }

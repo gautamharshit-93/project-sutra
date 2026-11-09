@@ -15,7 +15,7 @@ export function ActiveBadge({ active }) {
  * List + search + create/edit/delete for a master-data resource.
  * `fields`: [{ name, label, type?, required?, options?, wide? }] ; `columns`: [{ label, render(row) }]
  */
-export default function CrudPage({ title, singular, description, api, fields, columns, toForm, extraActions }) {
+export default function CrudPage({ title, singular, description, api, fields, columns, toForm, extraActions, allowCreate = true, notice }) {
   const { user } = useAuth();
   const { notify } = useToast();
   const editable = can.manageMasterData(user);
@@ -49,8 +49,9 @@ export default function CrudPage({ title, singular, description, api, fields, co
           <h1>{title}</h1>
           {description && <p className="muted">{description}</p>}
         </div>
-        {editable && <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>New {singular.toLowerCase()}</button>}
+        {editable && allowCreate && <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>New {singular.toLowerCase()}</button>}
       </div>
+      {notice && <div className="notice notice-info page-notice">{notice}</div>}
 
       <div className="toolbar">
         <input type="search" className="search" placeholder={`Search ${title.toLowerCase()} by name or code`}

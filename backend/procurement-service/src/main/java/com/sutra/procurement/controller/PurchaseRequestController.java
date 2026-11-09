@@ -56,11 +56,14 @@ public class PurchaseRequestController {
     private final ComparisonService comparisonService;
     private final ApprovalService approvalService;
     private final RfqDraftService rfqDraftService;
+    private final com.sutra.procurement.service.AwardSummaryService awardSummaries;
 
     public PurchaseRequestController(PurchaseRequestService purchaseRequestService, QuotationService quotationService,
                                      ComparisonService comparisonService, ApprovalService approvalService,
-                                     RfqDraftService rfqDraftService) {
+                                     RfqDraftService rfqDraftService,
+                                     com.sutra.procurement.service.AwardSummaryService awardSummaries) {
         this.rfqDraftService = rfqDraftService;
+        this.awardSummaries = awardSummaries;
         this.purchaseRequestService = purchaseRequestService;
         this.quotationService = quotationService;
         this.comparisonService = comparisonService;
@@ -183,6 +186,16 @@ public class PurchaseRequestController {
     }
 
     // ---------- approvals ----------
+
+    /** The decision as a PDF: what was awarded to whom, at what price, who decided, when and why. */
+    @GetMapping("/{id}/award-summary")
+    public ResponseEntity<byte[]> awardSummary(@PathVariable Long id) {
+        var summary = awardSummaries.summary(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header("Content-Disposition", "attachment; filename=\"" + summary.fileName() + "\"")
+                .body(summary.pdf());
+    }
 
     @GetMapping("/{id}/approvals")
     public List<ApprovalResponse> approvals(@PathVariable Long id) {

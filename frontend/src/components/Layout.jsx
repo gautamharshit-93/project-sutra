@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { useBadges } from '../hooks/useBadges.js';
 import { can, homePath, roleLabel } from '../utils/permissions.js';
 import { AssistantButton, AssistantHelpCard, AssistantProvider } from './Assistant.jsx';
 import BackButton from './BackButton.jsx';
@@ -20,14 +21,18 @@ export function navFor(user) {
       { section: 'Vendor portal' },
       { to: '/portal', label: 'Open RFQs', icon: 'inbox', end: true },
       { to: '/portal/quotations', label: 'My quotations', icon: 'file' },
+      { to: '/portal/profile', label: 'Company profile', icon: 'vendors' },
     ];
   }
   const items = [{ section: 'Overview' }, { to: '/', label: 'Dashboard', icon: 'dashboard', end: true }];
-  if (can.workOnRfqs(user)) items.push({ section: 'Contracts' }, { to: '/purchase-requests', label: 'RFQs', icon: 'contracts' });
-  if (can.viewVendors(user)) items.push({ section: 'Vendors' }, { to: '/vendors', label: 'Vendors', icon: 'vendors' });
-  if (can.manageMasterData(user)) {
-    items.push({ to: '/entities', label: 'Entities', icon: 'entities' }, { to: '/customers', label: 'Customers', icon: 'customers' });
+  // Entities (who is buying) come right above RFQs: an RFQ always belongs to one
+  if (can.workOnRfqs(user)) {
+    items.push({ section: 'Contracts' });
+    if (can.manageMasterData(user)) items.push({ to: '/entities', label: 'Entities', icon: 'entities' });
+    items.push({ to: '/purchase-requests', label: 'RFQs', icon: 'contracts' });
   }
+  if (can.viewVendors(user)) items.push({ section: 'Vendors' }, { to: '/vendors', label: 'Vendors', icon: 'vendors' });
+  if (can.manageMasterData(user)) items.push({ to: '/customers', label: 'Customers', icon: 'customers' });
   if (can.viewAudit(user)) items.push({ section: 'Compliance' }, { to: '/audit', label: 'Audit log', icon: 'compliance' });
   if (can.viewAwardRegister(user)) items.push({ section: 'Reports' }, { to: '/awards', label: 'Award register', icon: 'reports' });
   if (can.manageUsers(user)) items.push({ section: 'Administration' }, { to: '/users', label: 'Users & roles', icon: 'users' });
@@ -91,9 +96,10 @@ export default function Layout() {
   const atHome = location.pathname === homePath(user);
   const nav = navFor(user);
   const pages = nav.filter((i) => i.to);
+  const badges = useBadges(user, location.pathname);
 
   return (
-    <AssistantProvider enabled={can.isStaff(user)}>
+    <AssistantProvider enabled={can.isStaff(user)} canDraft={can.createRequest(user)}>
     <div className={`shell${menuOpen ? ' shell-menu-open' : ''}`}>
       <aside className="sidebar">
         <Logo wordmark subtitle={can.useVendorPortal(user) ? 'Supplier portal' : 'Vendor management'} />
@@ -108,6 +114,7 @@ export default function Layout() {
                     {isActive && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
                     <Icon name={item.icon} size={18} className="nav-icon" />
                     <span className="nav-label">{item.label}</span>
+                    {badges[item.to] > 0 && <span className="nav-badge" aria-label={`${badges[item.to]} waiting`}>{badges[item.to]}</span>}
                   </>
                 )}
               </NavLink>
@@ -139,7 +146,9 @@ export default function Layout() {
         </main>
       </div>
 
-      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
+      {(changingPassword || user.passwordChangeRequired) && (
+        <ChangePasswordModal required={user.passwordChangeRequired} onClose={() => setChangingPassword(false)} />
+      )}
     </div>
     </AssistantProvider>
   );

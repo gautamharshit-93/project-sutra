@@ -102,7 +102,15 @@ export default function ApprovalPanel({ request, latest, approvals, canDecide, o
       </section>
 
       <section className="card">
-        <h2>Award history</h2>
+        <div className="card-header">
+          <h2>Award history</h2>
+          {approvals.length > 0 && (
+            <button type="button" className="btn" onClick={() => purchaseRequestsApi.downloadAwardSummary(request.id, request.requestNumber)
+              .catch((err) => notify(errorMessage(err), 'error'))}>
+              Download award summary (PDF)
+            </button>
+          )}
+        </div>
         {approvals.length ? (
           <table className="table">
             <thead><tr><th>Decision</th><th>Awarded vendor</th><th>Reason</th><th>Comparison</th><th>Decided by</th><th>When</th></tr></thead>
