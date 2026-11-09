@@ -38,7 +38,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Final checking: reads one quotation with several engines (e.g. Gemini, an OpenAI-compatible model and the
+ * Final checking: reads one quotation with several engines (e.g. Groq and the
  * rule-based reader), then matches, recalculates and grades each reading the same way a stored extraction is
  * treated. Nothing is saved; the user can then re-run the quotation with the engine they trust.
  */

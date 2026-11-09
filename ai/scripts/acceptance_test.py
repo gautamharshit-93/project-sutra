@@ -262,13 +262,13 @@ def main():
     # ------------------------------------------------------------------ 5 review and compare
     start("5. Extracted data can be reviewed or corrected, and equivalent items compared")
     engines = {e["engine"]: e for e in buyer.call("GET", "/extraction-engines")["engines"]}
-    check("Engines are Gemini (free models) and the rule-based reader",
-          set(engines) == {"GEMINI", "RULES"} and engines["RULES"]["available"],
+    check("Engines are Groq (free models) and the rule-based reader",
+          set(engines) == {"GROQ", "RULES"} and engines["RULES"]["available"],
           ", ".join(f"{k}: {'on' if v['available'] else 'off'} {v['models']}" for k, v in engines.items()))
     extracted = {}
     for code, qid in quotation_ids.items():
         q = wait_processed(buyer, qid)
-        if q["status"] == "FAILED":  # e.g. every free Gemini model rate-limited: read it without AI instead
+        if q["status"] == "FAILED":  # e.g. every free Groq model rate-limited: read it without AI instead
             buyer.call("POST", f"/quotations/{qid}/reprocess?engine=RULES")
             q = wait_processed(buyer, qid)
         extracted[code] = q

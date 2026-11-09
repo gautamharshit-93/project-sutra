@@ -97,7 +97,7 @@ public class QuotationProcessingService {
         try {
             input = tx.execute(status -> claim(quotationId));
             if (input != null) {
-                input = input.withGeminiModel(choice.geminiModel());
+                input = input.withPreferredModel(choice.model());
             }
         } catch (QuotationNotFoundException e) {
             log.warn("Quotation {} disappeared before processing", quotationId);

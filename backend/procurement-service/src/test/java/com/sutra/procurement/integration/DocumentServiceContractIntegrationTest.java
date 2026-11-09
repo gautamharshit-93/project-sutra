@@ -24,12 +24,12 @@ import org.springframework.web.client.RestClient;
 
 /**
  * File processing between this service and the real Python document service (folder /ai), with the automotive
- * test pack in /data: file-to-text conversion (what Gemini receives), the rule-based reader and item matching.
+ * test pack in /data: file-to-text conversion (what Groq receives), the rule-based reader and item matching.
  * Skipped automatically when the document service is not running on localhost:8000.
  */
 class DocumentServiceContractIntegrationTest {
 
-    private static final Path DATA = Path.of("..", "..", "data");
+    private static final Path DATA = Path.of("..", "..", "ai", "test-data");
     private final AiServiceClient client = new AiServiceClient(Fixtures.properties(), RestClient.builder());
 
     @BeforeEach

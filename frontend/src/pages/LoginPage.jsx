@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { errorMessage } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -73,6 +73,7 @@ export default function LoginPage() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        <Link to="/welcome" className="login-home small">← Back to the SUTRA home page</Link>
       </motion.form>
     </div>
   );

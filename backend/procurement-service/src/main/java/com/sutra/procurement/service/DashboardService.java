@@ -51,7 +51,7 @@ public class DashboardService {
         } catch (ServiceUnavailableException e) {
             stats = null;
         }
-        // The engine AUTO would use right now (the rule-based reader when Gemini is not configured)
+        // The engine AUTO would use right now (the rule-based reader when Groq is not configured)
         QuotationExtractor extractor = engines.firstAvailable();
         return new DashboardResponse(stats == null ? null : stats.entities(), stats == null ? null : stats.customers(),
                 stats == null ? null : stats.vendors(), prs, quotations,

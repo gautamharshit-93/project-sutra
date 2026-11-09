@@ -54,7 +54,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @Import(CleanDatabaseConfig.class)
 class ProcurementWorkflowIntegrationTest {
 
-    private static final Path DATA = Path.of("..", "..", "data");
+    private static final Path DATA = Path.of("..", "..", "ai", "test-data");
     private static final String XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     @Autowired MockMvc mvc;

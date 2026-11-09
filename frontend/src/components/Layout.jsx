@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { can, homePath, roleLabel } from '../utils/permissions.js';
+import { AssistantButton, AssistantHelpCard, AssistantProvider } from './Assistant.jsx';
 import BackButton from './BackButton.jsx';
 import ChangePasswordModal from './ChangePasswordModal.jsx';
 import GlobalSearch from './GlobalSearch.jsx';
@@ -92,6 +93,7 @@ export default function Layout() {
   const pages = nav.filter((i) => i.to);
 
   return (
+    <AssistantProvider enabled={can.isStaff(user)}>
     <div className={`shell${menuOpen ? ' shell-menu-open' : ''}`}>
       <aside className="sidebar">
         <Logo wordmark subtitle={can.useVendorPortal(user) ? 'Supplier portal' : 'Vendor management'} />
@@ -111,6 +113,7 @@ export default function Layout() {
               </NavLink>
             ))}
         </nav>
+        <AssistantHelpCard />
         <div className="sidebar-foot">
           <span className="dot dot-on" /> Signed in as {roleLabel(user.roles[0])}
         </div>
@@ -124,6 +127,7 @@ export default function Layout() {
           </button>
           <GlobalSearch user={user} pages={pages} />
           <div className="topbar-spacer" />
+          <AssistantButton />
           <UserMenu user={user} onPassword={() => setChangingPassword(true)} onLogout={logout} />
         </header>
         <main className="content">
@@ -137,5 +141,6 @@ export default function Layout() {
 
       {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
     </div>
+    </AssistantProvider>
   );
 }

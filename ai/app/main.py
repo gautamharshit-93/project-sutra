@@ -1,6 +1,6 @@
 """FastAPI app: /health, /parse, /match, /extract. Called only by the SUTRA backend.
 
-AI extraction (Gemini or an OpenAI-compatible model) runs in the backend. This service converts files into plain
+AI extraction (Groq, with Tesseract OCR for scanned PDFs) runs in the backend. This service converts files into plain
 text for those engines, fuzzy-matches quoted lines to requested lines, and is itself the rule-based extraction
 engine (/extract, no AI).
 

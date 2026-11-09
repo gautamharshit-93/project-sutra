@@ -224,10 +224,10 @@ function buildRisks({ qs, expiring, overdue, engines, services }) {
   if (down.length) {
     risks.push({ key: 'services', level: 'high', title: `${down.length} service(s) down`, text: down.map((s) => humanize(s.service)).join(', ') });
   }
-  const gemini = engines?.engines?.find((e) => e.engine === 'GEMINI');
-  if (gemini && !gemini.available) {
-    risks.push({ key: 'gemini', level: 'low', title: 'AI extraction not configured',
-      text: 'Quotations are read by the rule-based reader. Set GEMINI_API_KEY to enable Gemini.' });
+  const groq = engines?.engines?.find((e) => e.engine === 'GROQ');
+  if (groq && !groq.available) {
+    risks.push({ key: 'groq', level: 'low', title: 'AI extraction not configured',
+      text: 'Quotations are read by the rule-based reader. Set GROQ_API_KEY to enable Groq AI.' });
   }
   return risks;
 }
@@ -270,7 +270,8 @@ function Kpi({ icon, label, value, sub, tone, to }) {
 }
 
 const DONUT_COLORS = {
-  READY_FOR_COMPARISON: '#e11d48', NEEDS_REVIEW: '#fb7185', PROCESSING: '#fda4af', UPLOADED: '#fecdd3', FAILED: '#7f1d2d',
+  READY_FOR_COMPARISON: '#ff0000', NEEDS_REVIEW: 'rgba(255, 0, 0, .5)', PROCESSING: 'rgba(255, 0, 0, .22)',
+  UPLOADED: 'rgba(0, 0, 0, .25)', FAILED: '#000000',
 };
 
 function Donut({ counts }) {
@@ -287,7 +288,7 @@ function Donut({ counts }) {
         {entries.map(([status, n], i) => {
           const fraction = n / total;
           const seg = (
-            <motion.circle key={status} cx="70" cy="70" r={r} fill="none" stroke={DONUT_COLORS[status] || '#fca5a5'} strokeWidth="16"
+            <motion.circle key={status} cx="70" cy="70" r={r} fill="none" stroke={DONUT_COLORS[status] || 'rgba(0, 0, 0, .4)'} strokeWidth="16"
                            transform={`rotate(${offset * 360 - 90} 70 70)`}
                            initial={{ strokeDasharray: `0 ${circumference}`, opacity: 0 }}
                            animate={{ strokeDasharray: `${fraction * circumference} ${circumference}`, opacity: 1 }}
@@ -302,7 +303,7 @@ function Donut({ counts }) {
       <ul className="legend">
         {entries.map(([status, n]) => (
           <li key={status}>
-            <span className="legend-swatch" style={{ background: DONUT_COLORS[status] || '#fca5a5' }} />
+            <span className="legend-swatch" style={{ background: DONUT_COLORS[status] || 'rgba(0, 0, 0, .4)' }} />
             <span>{humanize(status)}</span>
             <strong>{n}</strong>
             <span className="muted small">{Math.round((n / total) * 100)}%</span>
@@ -397,7 +398,7 @@ function Health({ engines, services, d }) {
       {(engines.data?.engines || []).map((e) => (
         <li key={e.engine}>
           <span className={`dot ${e.available ? 'dot-on' : 'dot-off'}`} />
-          <strong>{e.label || (e.engine === 'GEMINI' ? 'Google Gemini' : 'Rule-based reader')}</strong>
+          <strong>{e.label || (e.engine === 'GROQ' ? 'Groq AI' : 'Rule-based reader')}</strong>
           <span className="muted small">{e.available ? (e.models?.length ? e.models.join(', ') : 'available') : 'not available'}</span>
           {d?.extractionEngine === e.engine && e.available && <span className="badge badge-danger">used first</span>}
         </li>

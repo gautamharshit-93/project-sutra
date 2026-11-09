@@ -11,7 +11,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 public class QuotationProcessingEvents {
 
-    /** Published when a quotation should be (re)processed with the given engine and Gemini model. */
+    /** Published when a quotation should be (re)processed with the given engine and preferred Groq model. */
     public record ProcessQuotationRequested(Long quotationId, ExtractionChoice choice) {
         public ProcessQuotationRequested {
             choice = choice == null ? ExtractionChoice.AUTO : choice;

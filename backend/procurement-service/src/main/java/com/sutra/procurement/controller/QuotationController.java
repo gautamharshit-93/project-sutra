@@ -99,8 +99,8 @@ public class QuotationController {
     @PreAuthorize(CAN_EDIT)
     public QuotationResponse reprocess(@PathVariable Long id,
                                        @RequestParam(defaultValue = "AUTO") ExtractionEngine engine,
-                                       @RequestParam(required = false) String geminiModel) {
-        return quotationService.reprocess(id, new ExtractionChoice(engine, geminiModel));
+                                       @RequestParam(required = false) String model) {
+        return quotationService.reprocess(id, new ExtractionChoice(engine, model));
     }
 
     /**

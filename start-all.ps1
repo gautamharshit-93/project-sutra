@@ -5,7 +5,8 @@
 #   .\start-all.ps1 -Acceptance     a separate copy for ai\scripts\acceptance_test.py: sutra_test database, gateway on
 #                                   :9080 (services 9081-9084), no frontend. Real data is never touched.
 #
-# Gemini reads quotations when the GEMINI_API_KEY user environment variable is set (see README); without it the
+# Groq reads quotations (Tesseract OCR for scanned PDFs) when the GROQ_API_KEY user environment variable is set
+# (see README); without it the
 # rule-based reader is used. Stop everything with  .\stop-all.ps1
 param([switch]$Acceptance)
 

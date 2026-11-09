@@ -3,6 +3,7 @@ import RequireAuth from './auth/RequireAuth.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import LandingPage from './pages/LandingPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage.jsx';
 import PurchaseRequestDetailPage from './pages/PurchaseRequestDetailPage.jsx';
@@ -29,8 +30,9 @@ const staff = (element, roles = STAFF) => <RequireAuth roles={roles}>{element}</
 export default function App() {
   return (
     <Routes>
+      <Route path="/welcome" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<RequireAuth><Layout /></RequireAuth>}>
+      <Route element={<RequireAuth landing="/welcome"><Layout /></RequireAuth>}>
         <Route index element={<Home />} />
         <Route path="purchase-requests" element={staff(<PurchaseRequestsPage />, RFQ_WORK)} />
         <Route path="purchase-requests/:id" element={staff(<PurchaseRequestDetailPage />)} />

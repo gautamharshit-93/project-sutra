@@ -4,12 +4,12 @@ import com.sutra.procurement.entity.enums.ExtractionSource;
 
 /**
  * The extraction engine a user asks for when uploading or retrying a quotation. AUTO tries the engines in the
- * configured order ({@code sutra.extraction.engine-order}: Gemini, then the rule-based reader) and moves on when
- * one is unavailable or fails, so a rate-limited free Gemini tier never blocks the workflow.
+ * configured order ({@code sutra.extraction.engine-order}: Groq, then the rule-based reader) and moves on when
+ * one is unavailable or fails, so a rate-limited free Groq tier never blocks the workflow.
  */
 public enum ExtractionEngine {
-    AUTO(null, "Automatic (Gemini, then rule-based)"),
-    GEMINI(ExtractionSource.GEMINI, "Google Gemini (free models)"),
+    AUTO(null, "Automatic (Groq, then rule-based)"),
+    GROQ(ExtractionSource.GROQ, "Groq AI (free models, OCR for scans)"),
     RULES(ExtractionSource.RULES, "Rule-based reader (no AI)");
 
     private final ExtractionSource source;

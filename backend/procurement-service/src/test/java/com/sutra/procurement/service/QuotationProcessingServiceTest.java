@@ -64,7 +64,7 @@ class QuotationProcessingServiceTest {
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         var review = new QuotationReviewService(
                 new QuotationValidator(new QuotationCalculator(), Fixtures.properties(), Fixtures.CLOCK));
-        when(extractor.source()).thenReturn(ExtractionSource.GEMINI);
+        when(extractor.source()).thenReturn(ExtractionSource.GROQ);
         when(extractor.isAvailable()).thenReturn(true);
         var engines = new ExtractionEngines(List.of(extractor), ExtractionProperties.defaults());
         service = new QuotationProcessingService(quotationRepository, fileRepository, engines, itemMatcher,
@@ -117,7 +117,7 @@ class QuotationProcessingServiceTest {
         assertThat(quotation.getCurrency()).isEqualTo("INR");
         assertThat(quotation.getQuotationNumber()).isEqualTo("AQ-118");
         assertThat(quotation.getGrandTotal()).as("backend-calculated").isEqualByComparingTo("940460.00");
-        assertThat(quotation.getExtractionSource()).isEqualTo(ExtractionSource.GEMINI);
+        assertThat(quotation.getExtractionSource()).isEqualTo(ExtractionSource.GROQ);
         assertThat(quotation.getProcessingAttempts()).isEqualTo(1);
         assertThat(quotation.getStatus()).isEqualTo(QuotationStatus.READY_FOR_COMPARISON);
         verify(auditService).recordAs(eq("system"), eq("QUOTATION"), eq(quotation.getId()), eq("EXTRACTED"), anyMap());
@@ -139,7 +139,7 @@ class QuotationProcessingServiceTest {
 
     @Test
     void failedExtractionKeepsTheFileAndRecordsTheReason() {
-        when(extractor.extract(any())).thenThrow(new QuotationProcessingException("Gemini free-tier limit reached."));
+        when(extractor.extract(any())).thenThrow(new QuotationProcessingException("Groq free-tier limit reached."));
 
         service.process(quotation.getId());
 

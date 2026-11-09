@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * All extraction engines, and the choice between them. A user may ask for one engine (GEMINI or RULES) to
+ * All extraction engines, and the choice between them. A user may ask for one engine (GROQ or RULES) to
  * switch between them and cross-check, or for AUTO: the engines in {@code sutra.extraction.engine-order} are tried
  * one after another, skipping those that are not configured and moving on when one fails (for example a free
  * tier that is rate-limited).
@@ -55,7 +55,7 @@ public class ExtractionEngines {
         return infos;
     }
 
-    /** The order AUTO tries, e.g. [GEMINI, RULES]. */
+    /** The order AUTO tries, e.g. [GROQ, RULES]. */
     public List<ExtractionEngine> autoOrder() {
         return order;
     }
@@ -66,17 +66,17 @@ public class ExtractionEngines {
     }
 
     /**
-     * Checks a user's choice before it is queued: a chosen Gemini model must be one of the configured free models.
+     * Checks a user's choice before it is queued: a chosen Groq model must be one of the configured free models.
      */
     public void validate(ExtractionChoice choice) {
-        if (choice.geminiModel() == null) {
+        if (choice.model() == null) {
             return;
         }
-        QuotationExtractor gemini = byEngine.get(ExtractionEngine.GEMINI);
-        if (gemini == null || !gemini.models().contains(choice.geminiModel())) {
-            throw new com.sutra.common.error.BusinessRuleException("UNKNOWN_GEMINI_MODEL", "Gemini model '"
-                    + choice.geminiModel() + "' is not available. Choose one of: "
-                    + (gemini == null ? "none" : String.join(", ", gemini.models())));
+        QuotationExtractor groq = byEngine.get(ExtractionEngine.GROQ);
+        if (groq == null || !groq.models().contains(choice.model())) {
+            throw new com.sutra.common.error.BusinessRuleException("UNKNOWN_MODEL", "Groq model '"
+                    + choice.model() + "' is not available. Choose one of: "
+                    + (groq == null ? "none" : String.join(", ", groq.models())));
         }
     }
 

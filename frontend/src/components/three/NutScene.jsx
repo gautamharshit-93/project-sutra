@@ -3,9 +3,9 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-const ROSE = '#f87171';
-const ROSE_LIGHT = '#fecdd3';
-const ROSE_DEEP = '#e11d48';
+const ROSE = '#ff0000';
+const ROSE_LIGHT = '#ffffff';
+const ROSE_DEEP = '#000000';
 
 /** The SUTRA mark in 3D: an extruded hex nut with a threaded bore. */
 function HexNut() {

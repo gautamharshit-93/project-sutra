@@ -26,17 +26,17 @@ Exact, verified-compatible versions of every component are listed in [VERSIONS.m
    quotation (for example the same offer as PDF, Word and Excel, as in `ai/test-data/`). The backend checks each file's type,
    size and real content (magic bytes, Office package structure), stores the original bytes in PostgreSQL linked to
    the same quotation, and returns immediately.
-2. In the background an **extraction engine** reads the documents. Three engines can be switched per upload or retry:
+2. In the background an **extraction engine** reads the documents. Two engines can be switched per upload or retry:
 
    | Engine | What it is | Needs |
    |--------|------------|-------|
-   | `GEMINI` | Google Gemini (`gemini-3.8-flash`, free tier, structured JSON output). PDFs, including scanned ones, are sent directly; Excel and Word are converted to text first. Requests use `store: false`. On the free tier Google may use submitted content to improve its products | `GEMINI_API_KEY` |
-   | `OPENAI` | Any OpenAI-compatible chat API: Groq or OpenRouter (free tiers), a local Ollama, or OpenAI. Reads the text produced by the Python service, so scanned PDFs need Gemini | `OPENAI_MODEL` (+ `OPENAI_API_KEY`, or `OPENAI_BASE_URL` for Ollama) |
+   | `GROQ` | Groq AI (`openai/gpt-oss-120b`, free tier, strict JSON-schema output). Excel, Word and text PDFs are converted to text by the Python service; **scanned PDFs** are rendered page by page with Apache PDFBox and read locally by **Tesseract OCR**, then Groq reads the text | `GROQ_API_KEY` (+ Tesseract for scans) |
    | `RULES` | Rule-based reader in the Python service, no AI: finds the item table by its column headers and totals, dates and terms by their labels. Works on Excel, Word and text PDFs with a normal layout | Python service only |
 
-   `AUTO` (the default) tries `SUTRA_ENGINE_ORDER` (Gemini → OpenAI-compatible → rules) and moves on when an engine is
-   not configured, fails (e.g. a rate-limited free tier) or finds no line items. A rate-limited Gemini model first
-   falls back to `GEMINI_FALLBACK_MODELS`; temporary errors (HTTP 503) are retried.
+   `AUTO` (the default) tries `SUTRA_ENGINE_ORDER` (Groq → rules) and moves on when an engine is not configured,
+   fails (e.g. a rate-limited free tier) or finds no line items. A rate-limited Groq model first falls back to
+   `GROQ_FALLBACK_MODELS`; temporary errors (HTTP 503) are retried. Quotations extracted earlier by Gemini keep their
+   `GEMINI` source in the history.
    All files of one quotation are read together: each line is listed once, and figures that differ between the
    files are flagged.
 3. Quoted lines are matched to requested lines: exactly by item code (e.g. `IT-001`) where present, otherwise by
@@ -92,11 +92,13 @@ ai\.venv\Scripts\python ai\scripts\acceptance_test.py     # writes docs/ACCEPTAN
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `GEMINI_API_KEY` | *(unset)* | Google AI Studio key (free). Without it the Gemini engine is skipped |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model for extraction (any free-tier text model, e.g. `gemini-3.5-flash-lite`) |
-| `GEMINI_FALLBACK_MODELS` | `gemini-3.5-flash-lite` | Models tried when `GEMINI_MODEL` is rate-limited (comma-separated) |
-| `OPENAI_MODEL` / `OPENAI_API_KEY` / `OPENAI_BASE_URL` | *(unset)* / *(unset)* / `https://api.groq.com/openai/v1` | OpenAI-compatible engine; disabled until `OPENAI_MODEL` is set. For Ollama: `OPENAI_BASE_URL=http://localhost:11434/v1`, no key |
-| `SUTRA_ENGINE_ORDER` | `GEMINI,OPENAI,RULES` | Engines `AUTO` tries, in order |
+| `GROQ_API_KEY` | *(unset)* | Groq key (free, console.groq.com). Without it the Groq engine and the assistant are off |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model for extraction and the assistant |
+| `GROQ_FALLBACK_MODELS` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Models tried when `GROQ_MODEL` is rate-limited (comma-separated) |
+| `TESSERACT_PATH` | *(auto-detected)* | Tesseract executable for scanned PDFs; `C:\Program Files\Tesseract-OCR\tesseract.exe` and the PATH are searched |
+| `TESSERACT_LANGUAGES` / `SUTRA_OCR_DPI` / `SUTRA_OCR_MAX_PAGES` | `eng` / `300` / `30` | OCR languages (e.g. `eng+hin` once Hindi data is installed), render resolution, page limit per file |
+| `TESSDATA_PREFIX` | *(Tesseract's own folder)* | Folder with the OCR language files. On this machine it is `%LOCALAPPDATA%\Tesseract-OCR\tessdata` (English + Hindi, no admin rights needed) and `TESSERACT_LANGUAGES=eng+hin`; both are Windows user settings |
+| `SUTRA_ENGINE_ORDER` | `GROQ,RULES` | Engines `AUTO` tries, in order |
 | `SUTRA_EXTRACTION_CONCURRENCY` | `1` | Extractions running at once (1 keeps free tiers within their rate limits) |
 | `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/sutra_db` / `sutra` / `sutra_pass` | Database |
 | `JWT_SECRET` | dev value | **Set in any shared environment** (32+ characters) |
@@ -127,8 +129,9 @@ cd frontend; npm test                               # Vitest + React Testing Lib
 
 The backend integration tests use the `sutra_test` database, which is wiped and rebuilt from the migrations on
 each run. `AiServiceContractIntegrationTest` runs against the real Python service, and skips itself when the
-service is not running. No test calls a real AI API: `GeminiQuotationExtractorTest` and `OpenAiQuotationExtractorTest`
-use a mock HTTP server, and the workflow test stubs the Gemini engine.
+service is not running. No test calls a real AI API: `GroqQuotationExtractorTest` uses a mock HTTP server, and the workflow test uses the
+rule-based reader. `PdfOcrReaderTest` runs the real Tesseract on a generated scanned page and skips itself when
+Tesseract is not installed.
 
 ## Specification traceability
 
@@ -142,7 +145,7 @@ use a mock HTTP server, and the workflow test stubs the Gemini engine.
 | 3.2 | Original files stored in PostgreSQL with name, format, size, upload time, quotation | `quotation_file` table (BYTEA + SHA-256); files listed, downloadable, addable on the quotation page |
 | 3.2 | Manual entry and correction | `QuotationService` item/header endpoints; UI: quotation review page |
 | 3.2 | Statuses Uploaded, Processing, Needs Review, Ready for Comparison, Failed | `QuotationStatus` + DB CHECK constraint |
-| 3.3 | Extract items, quantities, prices, discounts, taxes, totals, validity, delivery and payment terms | `ExtractionEngines` choosing `GeminiQuotationExtractor`, `OpenAiQuotationExtractor` (same `ExtractionSchema`) or `RulesQuotationExtractor` (`ai/app/rules.py`) |
+| 3.3 | Extract items, quantities, prices, discounts, taxes, totals, validity, delivery and payment terms | `ExtractionEngines` choosing `GroqQuotationExtractor` (+ `PdfOcrReader` for scans, `ExtractionSchema`) or `RulesQuotationExtractor` (`ai/app/rules.py`) |
 | 3.3 | Cross-check engines and grade extraction quality | `ExtractionCrossCheckService`, `ExtractionQualityGrader`; UI: quotation page → Cross-check |
 | 3.3 | Match equivalent items, flag unmatched or missing | `HybridItemMatcher` (item codes, then descriptions/specs), `ai/app/matcher.py`, `QuotationValidator` |
 | 3.3 | Side-by-side comparison with price differences, missing info and terms | `ComparisonEngine` (+ advisory `VendorGrader`); UI: `ComparisonMatrix` |

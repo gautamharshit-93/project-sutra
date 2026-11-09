@@ -3,8 +3,10 @@ package com.sutra.procurement.controller;
 import com.sutra.procurement.ai.ExtractionChoice;
 import com.sutra.procurement.ai.ExtractionEngine;
 import com.sutra.procurement.entity.enums.PurchaseRequestStatus;
+import com.sutra.procurement.request.PurchaseRequestRequests.NewRfqRequest;
 import com.sutra.procurement.request.PurchaseRequestRequests.PurchaseRequestRequest;
 import com.sutra.procurement.request.PurchaseRequestRequests.RequestItemRequest;
+import com.sutra.procurement.request.PurchaseRequestRequests.RfqTextRequest;
 import com.sutra.procurement.request.PurchaseRequestRequests.StatusChangeRequest;
 import com.sutra.procurement.request.QuotationRequests.ApprovalRequest;
 import com.sutra.procurement.response.DecisionResponses.ApprovalResponse;
@@ -14,10 +16,12 @@ import com.sutra.procurement.response.PurchaseRequestResponses.PurchaseRequestRe
 import com.sutra.procurement.response.PurchaseRequestResponses.PurchaseRequestSummary;
 import com.sutra.procurement.response.QuotationResponses.QuotationResponse;
 import com.sutra.procurement.response.QuotationResponses.QuotationSummary;
+import com.sutra.procurement.response.RfqDraftResponses.RfqDraft;
 import com.sutra.procurement.service.ApprovalService;
 import com.sutra.procurement.service.ComparisonService;
 import com.sutra.procurement.service.PurchaseRequestService;
 import com.sutra.procurement.service.QuotationService;
+import com.sutra.procurement.service.RfqDraftService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -51,9 +55,12 @@ public class PurchaseRequestController {
     private final QuotationService quotationService;
     private final ComparisonService comparisonService;
     private final ApprovalService approvalService;
+    private final RfqDraftService rfqDraftService;
 
     public PurchaseRequestController(PurchaseRequestService purchaseRequestService, QuotationService quotationService,
-                                     ComparisonService comparisonService, ApprovalService approvalService) {
+                                     ComparisonService comparisonService, ApprovalService approvalService,
+                                     RfqDraftService rfqDraftService) {
+        this.rfqDraftService = rfqDraftService;
         this.purchaseRequestService = purchaseRequestService;
         this.quotationService = quotationService;
         this.comparisonService = comparisonService;
@@ -78,6 +85,28 @@ public class PurchaseRequestController {
     @PreAuthorize(CAN_EDIT)
     public PurchaseRequestResponse create(@Valid @RequestBody PurchaseRequestRequest request) {
         return purchaseRequestService.create(request);
+    }
+
+    /** Header + items (+ open to vendors) in one step, e.g. after the buyer confirms an RFQ read from a document. */
+    @PostMapping("/with-items")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize(CAN_EDIT)
+    public PurchaseRequestResponse createWithItems(@Valid @RequestBody NewRfqRequest request) {
+        return purchaseRequestService.createWithItems(request);
+    }
+
+    /** Reads dropped RFQ files into a draft. Nothing is saved. */
+    @PostMapping(path = "/draft-from-files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(CAN_EDIT)
+    public RfqDraft draftFromFiles(@RequestPart("files") List<MultipartFile> files) {
+        return rfqDraftService.fromFiles(files);
+    }
+
+    /** Reads pasted RFQ text into a draft. Nothing is saved. */
+    @PostMapping("/draft-from-text")
+    @PreAuthorize(CAN_EDIT)
+    public RfqDraft draftFromText(@Valid @RequestBody RfqTextRequest request) {
+        return rfqDraftService.fromText(request.text());
     }
 
     @PutMapping("/{id}")
@@ -134,9 +163,9 @@ public class PurchaseRequestController {
     public QuotationResponse upload(@PathVariable Long id, @RequestParam Long vendorId,
                                     @RequestPart("files") List<MultipartFile> files,
                                     @RequestParam(defaultValue = "AUTO") ExtractionEngine engine,
-                                    @RequestParam(required = false) String geminiModel) {
+                                    @RequestParam(required = false) String model) {
         // One quotation may have several files (e.g. the same offer as PDF, Word and Excel); they are read together.
-        return quotationService.upload(id, vendorId, files, new ExtractionChoice(engine, geminiModel));
+        return quotationService.upload(id, vendorId, files, new ExtractionChoice(engine, model));
     }
 
     // ---------- comparisons ----------

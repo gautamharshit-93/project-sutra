@@ -39,7 +39,7 @@ sutra:
       - service: procurement service
         url: ${PROCUREMENT_URL:http://localhost:8083}
         paths: [/api/purchase-requests/**, /api/quotations/**, /api/comparisons/**, /api/dashboard/**,
-                /api/extraction-engines/**, /api/vendor-portal/**]
+                /api/extraction-engines/**, /api/vendor-portal/**, /api/assistant/**]
 
 management:
   endpoints:

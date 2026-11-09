@@ -35,11 +35,11 @@ const STATUS_TONES = {
   DRAFT: 'neutral', OPEN: 'info', UNDER_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger',
   CANCELLED: 'neutral', UPLOADED: 'neutral', PROCESSING: 'info', NEEDS_REVIEW: 'warning',
   READY_FOR_COMPARISON: 'success', FAILED: 'danger', ERROR: 'danger', WARNING: 'warning', INFO: 'info',
-  GEMINI: 'info', RULES: 'neutral', MANUAL: 'neutral',
+  GROQ: 'info', GEMINI: 'neutral', RULES: 'neutral', MANUAL: 'neutral',
 };
 
 /** Names that humanize() would get wrong (extraction engines). */
-const STATUS_LABELS = { GEMINI: 'Gemini', RULES: 'Rule-based', MANUAL: 'Entered by hand', APPROVED: 'Awarded', UNDER_REVIEW: 'Comparing' };
+const STATUS_LABELS = { GROQ: 'Groq AI', GEMINI: 'Gemini (legacy)', RULES: 'Rule-based', MANUAL: 'Entered by hand', APPROVED: 'Awarded', UNDER_REVIEW: 'Comparing' };
 
 export function StatusBadge({ status }) {
   if (!status) return null;

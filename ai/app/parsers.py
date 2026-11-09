@@ -78,7 +78,7 @@ def _parse_pdf(content: bytes) -> Document:
                     doc.tables.append(table)
     if len("".join(doc.lines)) < 20 * max(doc.pages, 1):
         doc.warnings.append("Very little text was found; this PDF is probably scanned. "
-                            "Gemini reads it page by page as an image.")
+                            "The backend reads it with OCR (PDFBox + Tesseract).")
     return doc
 
 

@@ -41,7 +41,8 @@ public final class Fixtures {
         return new SutraProperties(
                 new SutraProperties.Files(1024 * 1024),
                 new SutraProperties.Ai("http://localhost:8000", 5,
-                        new SutraProperties.Gemini("", "gemini-3.8-flash", "http://gemini.test", 16000, 30),
+                        new SutraProperties.Groq("", "openai/gpt-oss-120b", "http://groq.test", 16000, 30),
+                        SutraProperties.Ocr.disabled(),
                         new BigDecimal("0.75"), new BigDecimal("0.6")));
     }
 

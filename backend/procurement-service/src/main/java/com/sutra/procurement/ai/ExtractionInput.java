@@ -13,15 +13,15 @@ public record ExtractionInput(
         String expectedVendorName,
         String requestCurrency,
         List<RequestedItem> requestedItems,
-        /** The Gemini model to try first, or null for the configured order. */
-        String geminiModel) {
+        /** The Groq model to try first, or null for the configured order. */
+        String preferredModel) {
 
     public ExtractionInput(List<Document> documents, String expectedVendorName, String requestCurrency,
                            List<RequestedItem> requestedItems) {
         this(documents, expectedVendorName, requestCurrency, requestedItems, null);
     }
 
-    public ExtractionInput withGeminiModel(String model) {
+    public ExtractionInput withPreferredModel(String model) {
         return new ExtractionInput(documents, expectedVendorName, requestCurrency, requestedItems, model);
     }
 

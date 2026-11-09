@@ -1,6 +1,7 @@
 package com.sutra.procurement.request;
 
 import com.sutra.procurement.entity.enums.PurchaseRequestStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public final class PurchaseRequestRequests {
 
@@ -36,5 +38,16 @@ public final class PurchaseRequestRequests {
     }
 
     public record StatusChangeRequest(@NotNull PurchaseRequestStatus status) {
+    }
+
+    /** A whole RFQ in one step (e.g. confirmed from a dropped document): header, items, and optionally open it. */
+    public record NewRfqRequest(
+            @NotNull @Valid PurchaseRequestRequest request,
+            @Size(max = 200) List<@Valid RequestItemRequest> items,
+            boolean open) {
+    }
+
+    /** RFQ text pasted by the buyer, to be read into a draft. */
+    public record RfqTextRequest(@NotBlank @Size(max = 60000) String text) {
     }
 }

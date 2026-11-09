@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * JSON Schema for {@link ExtractedQuotation}, sent to Gemini as the structured-output contract.
+ * JSON Schema for {@link ExtractedQuotation}, sent to Groq as the strict structured-output contract.
  * Optional values are nullable ({@code ["number","null"]}) and still required, so the model writes null
  * instead of guessing. A unit test keeps the property names in step with the record.
  */
@@ -62,7 +62,7 @@ public final class ExtractionSchema {
                 "warnings", warnings));
     }
 
-    private static Map<String, Object> object(Map<String, Object> properties) {
+    static Map<String, Object> object(Map<String, Object> properties) {
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
         schema.put("properties", properties);
@@ -71,7 +71,7 @@ public final class ExtractionSchema {
         return schema;
     }
 
-    private static Map<String, Object> props(Object... nameSchemaPairs) {
+    static Map<String, Object> props(Object... nameSchemaPairs) {
         Map<String, Object> properties = new LinkedHashMap<>();
         for (int i = 0; i < nameSchemaPairs.length; i += 2) {
             properties.put((String) nameSchemaPairs[i], nameSchemaPairs[i + 1]);
@@ -79,11 +79,11 @@ public final class ExtractionSchema {
         return properties;
     }
 
-    private static Map<String, Object> prop(String type, String description) {
+    static Map<String, Object> prop(String type, String description) {
         return Map.of("type", type, "description", description);
     }
 
-    private static Map<String, Object> nullable(String type, String description) {
+    static Map<String, Object> nullable(String type, String description) {
         return Map.of("type", List.of(type, "null"), "description", description);
     }
 }

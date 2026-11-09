@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Structured extraction output returned by Gemini (see {@link ExtractionSchema} for the JSON Schema sent with each
+ * Structured extraction output returned by Groq (see {@link ExtractionSchema} for the JSON Schema sent with each
  * request). Values are reported exactly as printed; the backend recalculates every total.
  */
 public record ExtractedQuotation(

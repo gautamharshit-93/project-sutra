@@ -70,35 +70,35 @@ describe('ComparisonMatrix advisory grade', () => {
 
 describe('EnginePicker', () => {
   beforeEach(() => vi.mocked(extractionApi.engines).mockResolvedValue({
-    autoOrder: ['GEMINI', 'RULES'],
+    autoOrder: ['GROQ', 'RULES'],
     engines: [
-      { engine: 'GEMINI', label: 'Google Gemini', model: 'gemini-3.8-flash > gemini-3.5-flash-lite',
-        models: ['gemini-3.8-flash', 'gemini-3.5-flash-lite'], available: true, inAutoOrder: true },
+      { engine: 'GROQ', label: 'Groq AI', model: 'openai/gpt-oss-120b > openai/gpt-oss-20b',
+        models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], available: true, inAutoOrder: true },
       { engine: 'RULES', label: 'Rule-based reader (no AI)', model: 'rules v1', models: ['rules v1'], available: false, inAutoOrder: true },
     ],
   }));
 
-  it('offers automatic, each free Gemini model and the rule-based reader', async () => {
+  it('offers automatic, each free Groq model and the rule-based reader', async () => {
     const onChange = vi.fn();
     render(<EnginePicker value="AUTO" onChange={onChange} />);
 
-    expect(await screen.findByRole('option', { name: 'Gemini · gemini-3.8-flash (default)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Automatic: Gemini, then rule-based' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Groq · openai/gpt-oss-120b (default)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Automatic: Groq AI, then rule-based' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Rule-based reader \(no AI\) \(document service down\)/ })).toBeDisabled();
-    await userEvent.selectOptions(screen.getByLabelText('Extraction engine'), 'GEMINI:gemini-3.5-flash-lite');
-    expect(onChange).toHaveBeenCalledWith('GEMINI:gemini-3.5-flash-lite');
+    await userEvent.selectOptions(screen.getByLabelText('Extraction engine'), 'GROQ:openai/gpt-oss-20b');
+    expect(onChange).toHaveBeenCalledWith('GROQ:openai/gpt-oss-20b');
   });
 
   it('turns a choice into API parameters', () => {
-    expect(parseChoice('GEMINI:gemini-3.5-flash-lite')).toEqual({ engine: 'GEMINI', geminiModel: 'gemini-3.5-flash-lite' });
-    expect(parseChoice('RULES')).toEqual({ engine: 'RULES', geminiModel: null });
-    expect(parseChoice(undefined)).toEqual({ engine: 'AUTO', geminiModel: null });
+    expect(parseChoice('GROQ:openai/gpt-oss-20b')).toEqual({ engine: 'GROQ', model: 'openai/gpt-oss-20b' });
+    expect(parseChoice('RULES')).toEqual({ engine: 'RULES', model: null });
+    expect(parseChoice(undefined)).toEqual({ engine: 'AUTO', model: null });
   });
 });
 
 describe('CrossCheckPanel', () => {
   const quotation = {
-    id: 5, status: 'NEEDS_REVIEW', currency: 'INR', extractionSource: 'GEMINI', grandTotal: '1000.00',
+    id: 5, status: 'NEEDS_REVIEW', currency: 'INR', extractionSource: 'GROQ', grandTotal: '1000.00',
     statedGrandTotal: '1000.00', quotationNumber: 'Q-1', validUntil: '2026-12-01', files: [{ id: 1 }],
     items: [{ id: 1, requestItemId: 100, requestItemLineNumber: 1, itemCode: 'IT-001', description: 'Laptop', lineTotal: '1000.00' }],
     flags: [], extractionQuality: report(95, 'A'),
@@ -115,10 +115,10 @@ describe('CrossCheckPanel', () => {
 
   it('reads with every engine, shows the readings side by side and offers to use one', async () => {
     vi.mocked(quotationsApi.crossCheck).mockResolvedValue({
-      quotationId: 5, currentSource: 'GEMINI', currentGrandTotal: '1000.00', totalsAgree: false, bestEngine: 'GEMINI',
-      summary: 'The engines disagree on the grand total: check the lines that differ against the original file. Highest quality score: GEMINI.',
+      quotationId: 5, currentSource: 'GROQ', currentGrandTotal: '1000.00', totalsAgree: false, bestEngine: 'GROQ',
+      summary: 'The engines disagree on the grand total: check the lines that differ against the original file. Highest quality score: GROQ.',
       runs: [
-        run('GEMINI', '1000.00', report(95, 'A')),
+        run('GROQ', '1000.00', report(95, 'A')),
         run('RULES', '900.00', report(60, 'C')),
       ],
     });
@@ -129,7 +129,7 @@ describe('CrossCheckPanel', () => {
 
     expect(quotationsApi.crossCheck).toHaveBeenCalledWith(5);
     expect(await screen.findByText(/The engines disagree/)).toBeInTheDocument();
-    expect(within(screen.getByRole('columnheader', { name: /^Gemini/ })).getByText('Highest quality')).toBeInTheDocument();
+    expect(within(screen.getByRole('columnheader', { name: /^Groq AI/ })).getByText('Highest quality')).toBeInTheDocument();
     const lineRow = screen.getByRole('rowheader', { name: 'Request line 1' }).closest('tr');
     expect(lineRow).toHaveTextContent('₹900.00');
     await userEvent.click(screen.getByRole('button', { name: 'Use Rule-based' }));
@@ -138,10 +138,10 @@ describe('CrossCheckPanel', () => {
 
   it('shows an engine that could not read the file', async () => {
     vi.mocked(quotationsApi.crossCheck).mockResolvedValue({
-      quotationId: 5, currentSource: 'GEMINI', currentGrandTotal: '1000.00', totalsAgree: false, bestEngine: 'RULES',
+      quotationId: 5, currentSource: 'GROQ', currentGrandTotal: '1000.00', totalsAgree: false, bestEngine: 'RULES',
       summary: 'Only RULES produced a reading (1 failed); there is nothing to cross-check it against.',
       runs: [
-        { engine: 'GEMINI', model: 'gemini-3.8-flash', ok: false, error: 'All free Gemini models are rate-limited', durationMs: 10, lines: [], flags: [] },
+        { engine: 'GROQ', model: 'openai/gpt-oss-120b', ok: false, error: 'All free Groq models are rate-limited', durationMs: 10, lines: [], flags: [] },
         run('RULES', '1000.00', report(80, 'B')),
       ],
     });
@@ -149,7 +149,7 @@ describe('CrossCheckPanel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Cross-check' }));
 
-    expect(await screen.findByText('All free Gemini models are rate-limited')).toBeInTheDocument();
+    expect(await screen.findByText('All free Groq models are rate-limited')).toBeInTheDocument();
   });
 
   it('shows the error when the cross-check cannot run', async () => {

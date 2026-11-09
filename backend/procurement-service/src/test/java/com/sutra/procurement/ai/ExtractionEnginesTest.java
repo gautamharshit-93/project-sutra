@@ -21,10 +21,10 @@ import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Engine selection: a named engine, AUTO's fallback order, readings without line items, Gemini model choice. */
+/** Engine selection: a named engine, AUTO's fallback order, readings without line items, Groq model choice. */
 class ExtractionEnginesTest {
 
-    private final QuotationExtractor gemini = extractor(ExtractionSource.GEMINI, "gemini-3.8-flash");
+    private final QuotationExtractor groq = extractor(ExtractionSource.GROQ, "openai/gpt-oss-120b");
     private final QuotationExtractor rules = extractor(ExtractionSource.RULES, "rules v1");
     private ExtractionEngines engines;
 
@@ -36,8 +36,8 @@ class ExtractionEnginesTest {
         QuotationExtractor e = mock(QuotationExtractor.class);
         when(e.source()).thenReturn(source);
         when(e.model()).thenReturn(model);
-        when(e.models()).thenReturn(source == ExtractionSource.GEMINI
-                ? List.of("gemini-3.8-flash", "gemini-3.5-flash-lite") : List.of(model));
+        when(e.models()).thenReturn(source == ExtractionSource.GROQ
+                ? List.of("openai/gpt-oss-120b", "openai/gpt-oss-20b") : List.of(model));
         when(e.isAvailable()).thenReturn(true);
         return e;
     }
@@ -55,34 +55,34 @@ class ExtractionEnginesTest {
 
     @BeforeEach
     void setUp() {
-        engines = new ExtractionEngines(List.of(rules, gemini), ExtractionProperties.defaults());
+        engines = new ExtractionEngines(List.of(rules, groq), ExtractionProperties.defaults());
     }
 
     @Test
-    void autoUsesGeminiFirstThenTheRuleBasedReader() {
-        when(gemini.extract(any())).thenReturn(reading(2));
+    void autoUsesGroqFirstThenTheRuleBasedReader() {
+        when(groq.extract(any())).thenReturn(reading(2));
 
         ExtractionEngines.Extraction result = engines.extract(INPUT, ExtractionEngine.AUTO);
 
-        assertThat(result.source()).isEqualTo(ExtractionSource.GEMINI);
-        assertThat(engines.autoOrder()).containsExactly(ExtractionEngine.GEMINI, ExtractionEngine.RULES);
+        assertThat(result.source()).isEqualTo(ExtractionSource.GROQ);
+        assertThat(engines.autoOrder()).containsExactly(ExtractionEngine.GROQ, ExtractionEngine.RULES);
         verify(rules, never()).extract(any());
     }
 
     @Test
-    void autoMovesOnWhenGeminiFailsOrIsNotConfigured() {
-        when(gemini.extract(any())).thenThrow(new QuotationProcessingException("Gemini free-tier limit reached"));
+    void autoMovesOnWhenGroqFailsOrIsNotConfigured() {
+        when(groq.extract(any())).thenThrow(new QuotationProcessingException("Groq free-tier limit reached"));
         when(rules.extract(any())).thenReturn(reading(1));
 
         assertThat(engines.extract(INPUT, null).source()).isEqualTo(ExtractionSource.RULES);
 
-        when(gemini.isAvailable()).thenReturn(false);
+        when(groq.isAvailable()).thenReturn(false);
         assertThat(engines.firstAvailable()).isSameAs(rules);
     }
 
     @Test
     void autoMovesOnWhenAnEngineFindsNoLineItems() {
-        when(gemini.extract(any())).thenReturn(reading(0));
+        when(groq.extract(any())).thenReturn(reading(0));
         when(rules.extract(any())).thenReturn(reading(3));
 
         assertThat(engines.extract(INPUT, ExtractionEngine.AUTO).source()).isEqualTo(ExtractionSource.RULES);
@@ -90,24 +90,24 @@ class ExtractionEnginesTest {
 
     @Test
     void whenEveryEngineFailsTheReasonOfEachIsListed() {
-        when(gemini.extract(any())).thenThrow(new QuotationProcessingException("Gemini is temporarily unavailable"));
+        when(groq.extract(any())).thenThrow(new QuotationProcessingException("Groq is temporarily unavailable"));
         when(rules.extract(any())).thenReturn(reading(0, "Rule-based reading found no item table."));
 
         assertThatThrownBy(() -> engines.extract(INPUT, ExtractionEngine.AUTO))
                 .isInstanceOf(QuotationProcessingException.class)
                 .hasMessageContaining("Every extraction engine failed")
-                .hasMessageContaining("GEMINI: Gemini is temporarily unavailable")
+                .hasMessageContaining("GROQ: Groq is temporarily unavailable")
                 .hasMessageContaining("RULES: No line items found (Rule-based reading found no item table)");
     }
 
     @Test
     void withOnlyOneEngineItsOwnMessageIsKept() {
-        engines = new ExtractionEngines(List.of(gemini, rules), new ExtractionProperties(
-                List.of(ExtractionEngine.GEMINI), 1, null));
-        when(gemini.extract(any())).thenThrow(new QuotationProcessingException("Gemini is temporarily unavailable."));
+        engines = new ExtractionEngines(List.of(groq, rules), new ExtractionProperties(
+                List.of(ExtractionEngine.GROQ), 1, null));
+        when(groq.extract(any())).thenThrow(new QuotationProcessingException("Groq is temporarily unavailable."));
 
         assertThatThrownBy(() -> engines.extract(INPUT, ExtractionEngine.AUTO))
-                .hasMessage("Gemini is temporarily unavailable. Retry, or enter the quotation manually.");
+                .hasMessage("Groq is temporarily unavailable. Retry, or enter the quotation manually.");
         verify(rules, never()).extract(any());
     }
 
@@ -116,7 +116,7 @@ class ExtractionEnginesTest {
         when(rules.extract(any())).thenReturn(reading(1));
 
         assertThat(engines.extract(INPUT, ExtractionEngine.RULES).source()).isEqualTo(ExtractionSource.RULES);
-        verify(gemini, never()).extract(any());
+        verify(groq, never()).extract(any());
     }
 
     @Test
@@ -131,15 +131,15 @@ class ExtractionEnginesTest {
 
     @Test
     void aNamedEngineThatIsNotConfiguredIsRefusedClearly() {
-        when(gemini.isAvailable()).thenReturn(false);
+        when(groq.isAvailable()).thenReturn(false);
 
-        assertThatThrownBy(() -> engines.extract(INPUT, ExtractionEngine.GEMINI))
+        assertThatThrownBy(() -> engines.extract(INPUT, ExtractionEngine.GROQ))
                 .hasMessageContaining("is not configured on the server");
     }
 
     @Test
     void noAvailableEngineMeansManualEntry() {
-        when(gemini.isAvailable()).thenReturn(false);
+        when(groq.isAvailable()).thenReturn(false);
         when(rules.isAvailable()).thenReturn(false);
 
         assertThat(engines.firstAvailable()).isNull();
@@ -149,33 +149,33 @@ class ExtractionEnginesTest {
 
     @Test
     void describeListsEachEngineWithItsModels() {
-        when(gemini.isAvailable()).thenReturn(false);
+        when(groq.isAvailable()).thenReturn(false);
 
         assertThat(engines.describe())
                 .extracting(ExtractionEngines.EngineInfo::engine, ExtractionEngines.EngineInfo::available)
-                .containsExactlyInAnyOrder(Tuple.tuple(ExtractionEngine.GEMINI, false),
+                .containsExactlyInAnyOrder(Tuple.tuple(ExtractionEngine.GROQ, false),
                         Tuple.tuple(ExtractionEngine.RULES, true));
-        assertThat(engines.describe()).filteredOn(i -> i.engine() == ExtractionEngine.GEMINI).first()
+        assertThat(engines.describe()).filteredOn(i -> i.engine() == ExtractionEngine.GROQ).first()
                 .extracting(ExtractionEngines.EngineInfo::models).asList()
-                .containsExactly("gemini-3.8-flash", "gemini-3.5-flash-lite");
+                .containsExactly("openai/gpt-oss-120b", "openai/gpt-oss-20b");
     }
 
     @Test
-    void onlyConfiguredGeminiModelsCanBeChosen() {
-        engines.validate(new ExtractionChoice(ExtractionEngine.GEMINI, "gemini-3.5-flash-lite"));
+    void onlyConfiguredGroqModelsCanBeChosen() {
+        engines.validate(new ExtractionChoice(ExtractionEngine.GROQ, "openai/gpt-oss-20b"));
         engines.validate(ExtractionChoice.AUTO);
 
-        assertThatThrownBy(() -> engines.validate(new ExtractionChoice(ExtractionEngine.GEMINI, "gpt-5")))
+        assertThatThrownBy(() -> engines.validate(new ExtractionChoice(ExtractionEngine.GROQ, "gpt-5")))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("gemini-3.8-flash, gemini-3.5-flash-lite");
+                .hasMessageContaining("openai/gpt-oss-120b, openai/gpt-oss-20b");
     }
 
     @Test
     void theChosenModelTravelsWithTheInput() {
-        when(gemini.extract(any())).thenReturn(reading(1));
+        when(groq.extract(any())).thenReturn(reading(1));
 
-        engines.extract(INPUT.withGeminiModel("gemini-3.5-flash-lite"), ExtractionEngine.GEMINI);
+        engines.extract(INPUT.withPreferredModel("openai/gpt-oss-20b"), ExtractionEngine.GROQ);
 
-        verify(gemini).extract(org.mockito.ArgumentMatchers.argThat(in -> "gemini-3.5-flash-lite".equals(in.geminiModel())));
+        verify(groq).extract(org.mockito.ArgumentMatchers.argThat(in -> "openai/gpt-oss-20b".equals(in.preferredModel())));
     }
 }

@@ -154,7 +154,7 @@ public class QuotationService {
         return upload(purchaseRequestId, vendorId, files, ExtractionChoice.of(engine));
     }
 
-    /** As above, with the Gemini model to try first. */
+    /** As above, with the Groq model to try first. */
     public QuotationResponse upload(Long purchaseRequestId, Long vendorId, List<MultipartFile> files,
                                     ExtractionChoice choice) {
         engines.validate(choice);
@@ -239,7 +239,7 @@ public class QuotationService {
         return reprocess(id, ExtractionChoice.of(engine));
     }
 
-    /** As above, with the Gemini model to try first. */
+    /** As above, with the Groq model to try first. */
     public QuotationResponse reprocess(Long id, ExtractionChoice choice) {
         engines.validate(choice);
         Quotation q = findEditable(id, true);

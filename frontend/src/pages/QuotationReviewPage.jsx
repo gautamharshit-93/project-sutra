@@ -233,11 +233,11 @@ export default function QuotationReviewPage() {
       )}
       {confirm === 'reprocess' && (
         <ConfirmDialog title="Re-run extraction" confirmLabel="Re-run" busy={busy} onCancel={() => setConfirm(null)}
-                       onConfirm={() => run(() => { const c = parseChoice(engine); return quotationsApi.reprocess(q.id, c.engine, c.geminiModel); }, `Extraction restarted (${engineName(engine)})`)}
+                       onConfirm={() => run(() => { const c = parseChoice(engine); return quotationsApi.reprocess(q.id, c.engine, c.model); }, `Extraction restarted (${engineName(engine)})`)}
                        message={(
                          <>
                            Extraction replaces the current lines, flags and any manual corrections with a fresh reading of the original files.
-                           <Field label="Read with" hint="Automatic tries Gemini first and moves to the rule-based reader if Gemini fails or is rate-limited.">
+                           <Field label="Read with" hint="Automatic tries Groq AI first and moves to the rule-based reader if Groq fails or is rate-limited.">
                              <EnginePicker value={engine} onChange={setEngine} />
                            </Field>
                          </>

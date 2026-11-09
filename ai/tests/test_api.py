@@ -28,7 +28,7 @@ def test_parse_matches_the_java_contract(xlsx_bytes):
     body = response.json()
     # every field of the Java ParsedDocument record must be present
     assert set(body) == {"format", "text", "pages", "charCount", "likelyScanned", "warnings"}
-    # spreadsheet rows become pipe-separated lines that Gemini reads as a table
+    # spreadsheet rows become pipe-separated lines that Groq reads as a table
     assert "Dell Latitude 5440 Laptop i5 16GB 512GB SSD | 10 | Nos | 68500 | 18 | 808300" in body["text"]
 
 

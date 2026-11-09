@@ -4,7 +4,7 @@ import com.sutra.common.error.SutraException;
 
 import org.springframework.http.HttpStatus;
 
-/** The AI provider (Gemini) could not answer: not configured, rate-limited, unreachable or returned bad data. */
+/** The AI provider (Groq) could not answer: not configured, rate-limited, unreachable or returned bad data. */
 public class AiServiceException extends SutraException {
 
     public AiServiceException(String message) {

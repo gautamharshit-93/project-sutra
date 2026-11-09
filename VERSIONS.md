@@ -28,8 +28,9 @@ Upgrade a row only together with the rows it depends on.
 | PostgreSQL JDBC *BOM* | 42.7.14 | |
 | Lombok *BOM* | 1.18.48 | |
 | JUnit Jupiter / Mockito *BOM* | 6.0.3 / 5.23.0 | |
-| Gemini API | REST `v1beta/interactions`, model `gemini-3.8-flash` | Called with Spring's RestClient; no SDK dependency |
-| OpenAI-compatible API | REST `POST /chat/completions`, `response_format: json_object` | Groq, OpenRouter, Ollama or OpenAI; Spring's RestClient, no SDK dependency |
+| Groq API | REST `POST /openai/v1/chat/completions`, strict `json_schema`; models `openai/gpt-oss-120b` > `openai/gpt-oss-20b` > `qwen/qwen3.8-27b` | Spring's RestClient; no SDK dependency |
+| Apache PDFBox | 3.0.8 | Renders scanned PDF pages for OCR |
+| Tesseract OCR | 5.4.0 (UB-Mannheim Windows build) | Installed program, called as a process; English language data |
 | jjwt | 0.12.6 | |
 | springdoc-openapi | 3.2.0 | Built against Spring Boot 4.1.2 |
 

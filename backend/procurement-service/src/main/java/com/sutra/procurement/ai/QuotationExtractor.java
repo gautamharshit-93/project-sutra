@@ -20,7 +20,7 @@ public interface QuotationExtractor {
     /** The model in use, shown on the dashboard. */
     String model();
 
-    /** The models a user can choose between (only Gemini has several). */
+    /** The models a user can choose between (only Groq has several). */
     default List<String> models() {
         return List.of(model());
     }

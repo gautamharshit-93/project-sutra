@@ -353,7 +353,7 @@ function UploadCard({ request, onUploaded }) {
     setProgress(0);
     try {
       const choice = parseChoice(engine);
-      const q = await purchaseRequestsApi.upload(request.id, vendorId, files, setProgress, choice.engine, choice.geminiModel);
+      const q = await purchaseRequestsApi.upload(request.id, vendorId, files, setProgress, choice.engine, choice.model);
       notify(`Uploaded ${q.files.length} file(s) for ${q.vendorName}. Extracting data…`);
       setFiles([]);
       onUploaded();
@@ -383,7 +383,7 @@ function UploadCard({ request, onUploaded }) {
         <Field label="Quotation files" required hint="PDF, Excel (.xlsx, .xls) or Word (.docx); up to 10 files, 20 MB each">
           <FilePicker files={files} onChange={setFiles} label="Quotation files" />
         </Field>
-        <Field label="Read with" hint="Automatic tries Gemini first and falls back to the rule-based reader">
+        <Field label="Read with" hint="Automatic tries Groq AI first (scanned PDFs are read by OCR) and falls back to the rule-based reader">
           <EnginePicker id="upload-engine" value={engine} onChange={setEngine} />
         </Field>
         <button type="submit" className="btn btn-primary" disabled={!vendorId || !files.length || progress !== null}>

@@ -13,7 +13,12 @@ vi.mock('../api/endpoints.js', () => ({
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: () => ({ user: admin }) }));
 const { reportingApi, purchaseRequestsApi, extractionApi } = await import('../api/endpoints.js');
 
-const isoDay = (offsetDays) => new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10);
+/** A local calendar date (YYYY-MM-DD) offsetDays from today; the dashboard counts days in local time, not UTC. */
+const isoDay = (offsetDays) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 describe('dashboard', () => {
   it('shows live counts, expiring offers, outstanding decisions and risks', async () => {
@@ -30,7 +35,7 @@ describe('dashboard', () => {
     vi.mocked(purchaseRequestsApi.quotations).mockImplementation(async (id) => (id === 1
       ? [{ id: 11, vendorName: 'Shakti Metals', requestNumber: 'PR-1', status: 'NEEDS_REVIEW', validUntil: isoDay(5) }]
       : [{ id: 12, vendorName: 'Vertex Auto', requestNumber: 'PR-2', status: 'READY_FOR_COMPARISON', validUntil: isoDay(60) }]));
-    vi.mocked(extractionApi.engines).mockResolvedValue({ engines: [{ engine: 'GEMINI', available: false }, { engine: 'RULES', available: true, models: ['rules v1'] }] });
+    vi.mocked(extractionApi.engines).mockResolvedValue({ engines: [{ engine: 'GROQ', available: false }, { engine: 'RULES', available: true, models: ['rules v1'] }] });
     vi.mocked(reportingApi.services).mockResolvedValue([{ service: 'gateway', up: true, responseMs: 4 }]);
     vi.mocked(reportingApi.auditLogs).mockResolvedValue({ content: [
       { id: 5, action: 'QUOTATION_UPLOADED', entityType: 'QUOTATION', entityId: 11, performedBy: 'shakti', performedAt: '2026-11-01T10:00:00Z' },

@@ -38,12 +38,12 @@ export const purchaseRequestsApi = {
   removeItem: (id, itemId) => data(http.delete(`/purchase-requests/${id}/items/${itemId}`)),
   quotations: (id) => data(http.get(`/purchase-requests/${id}/quotations`)),
   /** One quotation, one or more files (e.g. the same offer as PDF, Word and Excel), read by `engine` (AUTO by default). */
-  upload: (id, vendorId, files, onProgress, engine = 'AUTO', geminiModel = null) => {
+  upload: (id, vendorId, files, onProgress, engine = 'AUTO', model = null) => {
     const form = new FormData();
     files.forEach((f) => form.append('files', f));
     return data(
       http.post(`/purchase-requests/${id}/quotations`, form, {
-        params: { vendorId, engine, ...(geminiModel ? { geminiModel } : {}) },
+        params: { vendorId, engine, ...(model ? { model } : {}) },
         onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded * 100) / e.total) : 0),
       }),
     );
@@ -60,8 +60,8 @@ export const quotationsApi = {
   get: (id) => data(http.get(`/quotations/${id}`)),
   updateHeader: (id, body) => data(http.put(`/quotations/${id}`, body)),
   remove: (id) => data(http.delete(`/quotations/${id}`)),
-  reprocess: (id, engine = 'AUTO', geminiModel = null) => data(http.post(`/quotations/${id}/reprocess`, null, {
-    params: { engine, ...(geminiModel ? { geminiModel } : {}) },
+  reprocess: (id, engine = 'AUTO', model = null) => data(http.post(`/quotations/${id}/reprocess`, null, {
+    params: { engine, ...(model ? { model } : {}) },
   })),
   /**
    * Reads the quotation with several engines side by side (all available ones when `engines` is empty). Nothing is
@@ -98,7 +98,7 @@ export const quotationsApi = {
 };
 
 export const extractionApi = {
-  /** { engines: [{ engine, label, model, models, available, inAutoOrder }], autoOrder: ['GEMINI', 'RULES'] } */
+  /** { engines: [{ engine, label, model, models, available, inAutoOrder }], autoOrder: ['GROQ', 'RULES'] } */
   engines: () => data(http.get('/extraction-engines')),
 };
 
@@ -137,4 +137,13 @@ export const reportingApi = {
   services: () => data(http.get('/system/services')),
   comparison: (id) => data(http.get(`/comparisons/${id}`)),
   auditLogs: (params) => data(http.get('/audit-logs', { params })),
+};
+
+/**
+ * SUTRA Sahayak, the read-only Hindi/English assistant. `chat` sends the question, the earlier turns
+ * ([{ role: 'user'|'assistant', text }]) and the record on screen; it returns { reply, links: [{ type, id, label }] }.
+ */
+export const assistantApi = {
+  status: () => data(http.get('/assistant/status')),
+  chat: (body) => data(http.post('/assistant/chat', body, { timeout: 240000 })),
 };

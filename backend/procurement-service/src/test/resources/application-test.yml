@@ -10,8 +10,10 @@ spring:
 
 sutra:
   ai:
-    gemini:
-      api-key: ""      # tests never call the real Gemini API
+    groq:
+      api-key: ""      # tests never call the real Groq API
+    ocr:
+      enabled: false
   extraction:
     engine-order: RULES
   audit:

@@ -17,6 +17,7 @@ import com.sutra.procurement.exception.PurchaseRequestNotFoundException;
 import com.sutra.common.error.ResourceNotFoundException;
 import com.sutra.procurement.repository.PurchaseRequestRepository;
 import com.sutra.procurement.repository.QuotationRepository;
+import com.sutra.procurement.request.PurchaseRequestRequests.NewRfqRequest;
 import com.sutra.procurement.request.PurchaseRequestRequests.PurchaseRequestRequest;
 import com.sutra.procurement.request.PurchaseRequestRequests.RequestItemRequest;
 import com.sutra.common.web.PageResponse;
@@ -100,6 +101,19 @@ public class PurchaseRequestService {
         auditService.record(AUDIT_TYPE, pr.getId(), "CREATED", details("requestNumber", pr.getRequestNumber(),
                 "title", pr.getTitle()));
         return PurchaseRequestResponse.from(pr);
+    }
+
+    /** Header, items and (optionally) opening to vendors in one transaction: all of it is saved, or none. */
+    public PurchaseRequestResponse createWithItems(NewRfqRequest request) {
+        PurchaseRequestResponse result = create(request.request());
+        Long id = result.id();
+        for (RequestItemRequest item : request.items() == null ? List.<RequestItemRequest>of() : request.items()) {
+            result = addItem(id, item);
+        }
+        if (request.open()) {
+            result = changeStatus(id, PurchaseRequestStatus.OPEN);
+        }
+        return result;
     }
 
     public PurchaseRequestResponse update(Long id, PurchaseRequestRequest request) {
