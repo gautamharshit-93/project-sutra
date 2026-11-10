@@ -27,8 +27,8 @@ spring:
     enabled: true
     schemas: audit
     default-schema: audit
-    # The SQL in /database/audit is the single source of truth for this service's schema.
-    locations: ${AUDIT_MIGRATIONS:filesystem:../../database/audit}
+    # Migrations live with the service: src/main/resources/db/migration (V1 domain tables, then changes).
+    locations: ${AUDIT_MIGRATIONS:classpath:db/migration}
 
 sutra:
   security:
@@ -52,7 +52,7 @@ springdoc:
 
 logging:
   pattern:
-    correlation: "[%X{requestId:-}] "
+    correlation: "[%X{correlationId:-}] "
   level:
     root: INFO
     "[com.sutra]": INFO

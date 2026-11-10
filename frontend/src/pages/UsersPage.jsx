@@ -117,7 +117,7 @@ export default function UsersPage() {
                   <td>{u.pendingApproval ? <span className="badge badge-warning">Awaiting approval</span> : <ActiveBadge active={u.active} />}</td>
                   <td>{formatDate(u.createdAt)}</td>
                   <td className="actions-col">
-                    <button type="button" className="btn btn-small" onClick={() => setEditing(u)}>Edit</button>
+                    {!u.pendingApproval && <button type="button" className="btn btn-small" onClick={() => setEditing(u)}>Edit</button>}
                     <button type="button" className="btn btn-small btn-danger-text" onClick={() => setDeleting(u)}>Delete</button>
                   </td>
                 </tr>

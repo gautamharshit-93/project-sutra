@@ -1,12 +1,11 @@
-package com.sutra.procurement.validation;
+package com.sutra.document.service.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.sutra.procurement.entity.enums.FileFormat;
-import com.sutra.procurement.exception.InvalidQuotationFileException;
-import com.sutra.procurement.exception.UnsupportedQuotationFileException;
-import com.sutra.procurement.support.Fixtures;
+import com.sutra.api.enums.FileFormat;
+import com.sutra.document.exception.InvalidQuotationFileException;
+import com.sutra.document.exception.UnsupportedQuotationFileException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,9 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class QuotationFileValidatorTest {
+class FileContentValidatorTest {
 
-    private final QuotationFileValidator validator = new QuotationFileValidator(Fixtures.properties()); // 1 MB limit
+    private final FileContentValidator validator = new FileContentValidator(new com.sutra.document.config.DocumentProperties(1024 * 1024, 60)); // 1 MB limit
 
     private static byte[] officeZip(String folder) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -85,10 +84,10 @@ class QuotationFileValidatorTest {
 
     @Test
     void sanitisesPathsAndControlCharacters() {
-        assertThat(QuotationFileValidator.sanitiseFileName("C:\\fakepath\\..\\vendor\"quote\u0001.pdf"))
+        assertThat(FileContentValidator.sanitiseFileName("C:\\fakepath\\..\\vendor\"quote\u0001.pdf"))
                 .isEqualTo("vendor_quote_.pdf");
-        assertThat(QuotationFileValidator.sanitiseFileName("../../etc/passwd.pdf")).isEqualTo("passwd.pdf");
-        assertThatThrownBy(() -> QuotationFileValidator.sanitiseFileName(".."))
+        assertThat(FileContentValidator.sanitiseFileName("../../etc/passwd.pdf")).isEqualTo("passwd.pdf");
+        assertThatThrownBy(() -> FileContentValidator.sanitiseFileName(".."))
                 .isInstanceOf(InvalidQuotationFileException.class);
     }
 }

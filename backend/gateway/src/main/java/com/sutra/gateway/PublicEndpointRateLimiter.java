@@ -29,6 +29,23 @@ public class PublicEndpointRateLimiter {
         this.clock = clock;
     }
 
+    /**
+     * The caller's address. Requests relayed by a proxy on this same computer (the Vite dev server, a local reverse
+     * proxy) carry the real address in X-Forwarded-For; that header is trusted only from such a local proxy. The proxy
+     * appends the address it saw to whatever the client sent, so only the LAST entry is trustworthy: a client cannot
+     * escape the limit by sending a made-up X-Forwarded-For of its own.
+     */
+    public static String clientAddress(jakarta.servlet.http.HttpServletRequest request) {
+        String remote = request.getRemoteAddr();
+        String forwarded = request.getHeader("X-Forwarded-For");
+        boolean fromLocalProxy = "127.0.0.1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote) || "::1".equals(remote);
+        if (fromLocalProxy && forwarded != null && !forwarded.isBlank()) {
+            String[] hops = forwarded.split(",");
+            return hops[hops.length - 1].trim();
+        }
+        return remote;
+    }
+
     public boolean isLimited(String path) {
         return LIMITED_PATHS.contains(path);
     }

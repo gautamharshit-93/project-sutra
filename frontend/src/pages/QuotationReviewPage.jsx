@@ -63,7 +63,7 @@ export default function QuotationReviewPage() {
   return (
     <div className="page">
       <nav className="breadcrumbs">
-        <Link to="/purchase-requests">Purchase requests</Link> / <Link to={`/purchase-requests/${q.purchaseRequestId}`}>{q.requestNumber}</Link> / {q.vendorName}
+        <Link to="/purchase-requests">RFQs</Link> / <Link to={`/purchase-requests/${q.purchaseRequestId}`}>{q.requestNumber}</Link> / {q.vendorName}
       </nav>
       <div className="page-header">
         <div>

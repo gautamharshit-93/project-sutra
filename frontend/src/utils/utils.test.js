@@ -105,9 +105,9 @@ describe('comparisonToCsv', () => {
 
 describe('errorMessage with a request reference', () => {
   it('adds the reference only to server errors', () => {
-    const server = { response: { status: 502, data: { message: 'Groq is temporarily unavailable', requestId: 'abc123def4567890' } } };
+    const server = { response: { status: 502, data: { message: 'Groq is temporarily unavailable', correlationId: 'abc123def4567890' } } };
     expect(errorMessage(server)).toBe('Groq is temporarily unavailable (reference abc123def4567890)');
-    const client = { response: { status: 422, data: { message: 'Reason required', requestId: 'abc123def4567890' } } };
+    const client = { response: { status: 422, data: { message: 'Reason required', correlationId: 'abc123def4567890' } } };
     expect(errorMessage(client)).toBe('Reason required');
   });
 });

@@ -2,7 +2,7 @@ package com.sutra.gateway;
 
 import com.sutra.common.error.ApiError;
 import com.sutra.common.security.JwtCodec;
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +49,7 @@ public class GatewayFilter extends OncePerRequestFilter {
             error(response, path, 404, "Not Found", "NOT_FOUND", "No endpoint at this path");
             return;
         }
-        if (rateLimiter.isLimited(path) && !rateLimiter.tryAcquire(request.getRemoteAddr(), path)) {
+        if (rateLimiter.isLimited(path) && !rateLimiter.tryAcquire(PublicEndpointRateLimiter.clientAddress(request), path)) {
             response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(rateLimiter.secondsToReset()));
             error(response, path, 429, "Too Many Requests", "RATE_LIMITED", "Too many attempts from this computer ("
                     + rateLimiter.perMinute() + " a minute). Try again in " + rateLimiter.secondsToReset() + " seconds.");
@@ -87,6 +87,6 @@ public class GatewayFilter extends OncePerRequestFilter {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getOutputStream(),
-                new ApiError(Instant.now(), status, error, code, message, path, null, RequestIdFilter.current()));
+                new ApiError(Instant.now(), status, error, code, message, path, null, CorrelationIdFilter.current()));
     }
 }

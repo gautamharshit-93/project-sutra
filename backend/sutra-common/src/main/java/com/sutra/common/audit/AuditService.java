@@ -1,5 +1,6 @@
 package com.sutra.common.audit;
 
+import com.sutra.common.web.CorrelationIdFilter;
 import com.sutra.common.security.CurrentUserProvider;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,8 +11,9 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Records audit events. Each event is written to this service's outbox in the caller's transaction, so an action
- * and its audit record commit or roll back together; {@link AuditOutboxRelay} then delivers it to the audit
+ * Records audit events (transactional outbox). Each event is written to this service's outbox in the caller's
+ * transaction - {@code Propagation.MANDATORY} refuses a call outside one - so an action and its audit record commit
+ * or roll back together; {@link AuditOutboxRelay} then delivers it to the audit
  * service. Details must never contain file content or credentials.
  */
 @Service
@@ -30,12 +32,12 @@ public class AuditService {
         this.scopeResolver = scopeResolver;
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.MANDATORY)
     public void record(String entityType, Long entityId, String action, Map<String, ?> details) {
         recordAs(currentUser.username(), entityType, entityId, action, details);
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.MANDATORY)
     public void recordAs(String username, String entityType, Long entityId, String action, Map<String, ?> details) {
         AuditOutboxEvent event = new AuditOutboxEvent();
         event.setEntityType(entityType);
@@ -44,6 +46,7 @@ public class AuditService {
         event.setAction(action);
         event.setPerformedBy(username);
         event.setDetails(toJson(details));
+        event.setCorrelationId(CorrelationIdFilter.currentOrNew());
         outbox.save(event);
     }
 

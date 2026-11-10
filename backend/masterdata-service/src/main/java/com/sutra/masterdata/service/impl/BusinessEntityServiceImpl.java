@@ -1,5 +1,7 @@
-package com.sutra.masterdata.service;
+package com.sutra.masterdata.service.impl;
 
+import com.sutra.masterdata.service.internal.CodeGenerator;
+import com.sutra.masterdata.service.BusinessEntityService;
 import com.sutra.common.audit.AuditService;
 
 import static com.sutra.common.audit.AuditService.details;
@@ -14,10 +16,10 @@ import com.sutra.masterdata.repository.BusinessEntityRepository;
 import com.sutra.masterdata.repository.CustomerRepository;
 import com.sutra.masterdata.client.UsageClient;
 import com.sutra.masterdata.repository.SubEntityRepository;
-import com.sutra.masterdata.request.MasterDataRequests.EntityRequest;
-import com.sutra.masterdata.request.MasterDataRequests.SubEntityRequest;
-import com.sutra.masterdata.response.MasterDataResponses.EntityResponse;
-import com.sutra.masterdata.response.MasterDataResponses.SubEntityResponse;
+import com.sutra.masterdata.dto.request.MasterDataRequests.EntityRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.SubEntityRequest;
+import com.sutra.masterdata.dto.response.MasterDataResponses.EntityResponse;
+import com.sutra.masterdata.dto.response.MasterDataResponses.SubEntityResponse;
 import com.sutra.common.web.PageResponse;
 import com.sutra.common.util.Text;
 import java.util.List;
@@ -30,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** Parent entities and their sub-entities. */
 @Service
 @Transactional
-public class BusinessEntityService {
+public class BusinessEntityServiceImpl implements BusinessEntityService {
 
     static final String AUDIT_TYPE = "ENTITY";
     static final String SUB_AUDIT_TYPE = "SUB_ENTITY";
@@ -41,7 +43,7 @@ public class BusinessEntityService {
     private final UsageClient usage;
     private final AuditService auditService;
 
-    public BusinessEntityService(BusinessEntityRepository entityRepository, SubEntityRepository subEntityRepository,
+    public BusinessEntityServiceImpl(BusinessEntityRepository entityRepository, SubEntityRepository subEntityRepository,
                                  CustomerRepository customerRepository,
                                  UsageClient usage, AuditService auditService) {
         this.entityRepository = entityRepository;
@@ -52,20 +54,23 @@ public class BusinessEntityService {
     }
 
     @Transactional(readOnly = true)
+    @Override
     public PageResponse<EntityResponse> search(String q, int page, int size) {
         var pageable = PageRequest.of(page, Math.min(size, 200), Sort.by(BusinessEntity::getName));
         return PageResponse.of(entityRepository.search(Text.blankToNull(q), pageable), EntityResponse::from);
     }
 
     @Transactional(readOnly = true)
+    @Override
     public EntityResponse get(Long id) {
         return EntityResponse.from(find(id));
     }
 
+    @Override
     public EntityResponse create(EntityRequest request) {
         String code = request.code() == null || request.code().isBlank()
-                ? codeFromName(request.name(), entityRepository::existsByCodeIgnoreCase)
-                : normaliseCode(request.code());
+                ? CodeGenerator.fromName(request.name(), entityRepository::existsByCodeIgnoreCase)
+                : CodeGenerator.normalise(request.code());
         if (entityRepository.existsByCodeIgnoreCase(code)) {
             throw new DuplicateResourceException("An entity with code " + code + " already exists");
         }
@@ -76,9 +81,10 @@ public class BusinessEntityService {
         return EntityResponse.from(entity);
     }
 
+    @Override
     public EntityResponse update(Long id, EntityRequest request) {
         BusinessEntity entity = find(id);
-        String code = request.code() == null || request.code().isBlank() ? entity.getCode() : normaliseCode(request.code());
+        String code = request.code() == null || request.code().isBlank() ? entity.getCode() : CodeGenerator.normalise(request.code());
         if (entityRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
             throw new DuplicateResourceException("An entity with code " + code + " already exists");
         }
@@ -88,6 +94,7 @@ public class BusinessEntityService {
         return EntityResponse.from(entity);
     }
 
+    @Override
     public void delete(Long id) {
         BusinessEntity entity = find(id);
         if (subEntityRepository.countByEntityId(id) > 0) {
@@ -105,16 +112,18 @@ public class BusinessEntityService {
     // ---------- sub-entities ----------
 
     @Transactional(readOnly = true)
+    @Override
     public List<SubEntityResponse> listSubEntities(Long entityId) {
         find(entityId);
         return subEntityRepository.findByEntityIdOrderByCode(entityId).stream().map(SubEntityResponse::from).toList();
     }
 
+    @Override
     public SubEntityResponse createSubEntity(Long entityId, SubEntityRequest request) {
         BusinessEntity parent = find(entityId);
         String code = request.code() == null || request.code().isBlank()
-                ? codeFromName(request.name(), c -> subEntityRepository.existsByEntityIdAndCodeIgnoreCase(entityId, c))
-                : normaliseCode(request.code());
+                ? CodeGenerator.fromName(request.name(), c -> subEntityRepository.existsByEntityIdAndCodeIgnoreCase(entityId, c))
+                : CodeGenerator.normalise(request.code());
         if (subEntityRepository.existsByEntityIdAndCodeIgnoreCase(entityId, code)) {
             throw new DuplicateResourceException("Sub-entity code " + code + " already exists under " + parent.getName());
         }
@@ -127,9 +136,10 @@ public class BusinessEntityService {
         return SubEntityResponse.from(sub);
     }
 
+    @Override
     public SubEntityResponse updateSubEntity(Long entityId, Long subEntityId, SubEntityRequest request) {
         SubEntity sub = findSub(entityId, subEntityId);
-        String code = request.code() == null || request.code().isBlank() ? sub.getCode() : normaliseCode(request.code());
+        String code = request.code() == null || request.code().isBlank() ? sub.getCode() : CodeGenerator.normalise(request.code());
         if (subEntityRepository.existsByEntityIdAndCodeIgnoreCaseAndIdNot(entityId, code, subEntityId)) {
             throw new DuplicateResourceException("Sub-entity code " + code + " already exists under this entity");
         }
@@ -139,6 +149,7 @@ public class BusinessEntityService {
         return SubEntityResponse.from(sub);
     }
 
+    @Override
     public void deleteSubEntity(Long entityId, Long subEntityId) {
         SubEntity sub = findSub(entityId, subEntityId);
         if (usage.procurementUsage("sub-entities", subEntityId).inUse()) {
@@ -152,11 +163,13 @@ public class BusinessEntityService {
 
     // ---------- helpers ----------
 
+    @Override
     public BusinessEntity find(Long id) {
         return entityRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(id));
     }
 
     /** Loads a sub-entity and verifies it belongs to the given parent. */
+    @Override
     public SubEntity findSub(Long entityId, Long subEntityId) {
         SubEntity sub = subEntityRepository.findById(subEntityId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sub-entity", subEntityId));
@@ -182,21 +195,4 @@ public class BusinessEntityService {
         sub.setActive(request.active() == null || request.active());
     }
 
-    static String normaliseCode(String code) {
-        return code.trim().toUpperCase(Locale.ROOT);
-    }
-
-    /**
-     * A short unique code made from a name, so people only type the name: "Axiom Auto Components" -> "AXIOMAUTOC",
-     * then "AXIOMAUTOC-2" if that is taken.
-     */
-    public static String codeFromName(String name, java.util.function.Predicate<String> taken) {
-        String letters = name == null ? "" : name.toUpperCase(java.util.Locale.ROOT).replaceAll("[^A-Z0-9]", "");
-        String base = letters.length() >= 2 ? letters.substring(0, Math.min(10, letters.length())) : "CODE" + letters;
-        String code = base;
-        for (int n = 2; taken.test(code); n++) {
-            code = base + "-" + n;
-        }
-        return code;
-    }
 }

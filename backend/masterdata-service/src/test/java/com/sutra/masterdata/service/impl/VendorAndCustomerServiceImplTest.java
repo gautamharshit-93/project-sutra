@@ -1,5 +1,8 @@
-package com.sutra.masterdata.service;
+package com.sutra.masterdata.service.impl;
 
+import com.sutra.masterdata.service.BusinessEntityService;
+import com.sutra.masterdata.service.impl.VendorServiceImpl;
+import com.sutra.masterdata.service.impl.CustomerServiceImpl;
 import com.sutra.common.audit.AuditService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,8 +23,8 @@ import com.sutra.masterdata.exception.VendorNotFoundException;
 import com.sutra.masterdata.repository.CustomerRepository;
 import com.sutra.masterdata.client.UsageClient;
 import com.sutra.masterdata.repository.VendorRepository;
-import com.sutra.masterdata.request.MasterDataRequests.CustomerRequest;
-import com.sutra.masterdata.request.MasterDataRequests.VendorRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.CustomerRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorRequest;
 import com.sutra.masterdata.support.Fixtures;
 import java.util.Optional;
 import org.junit.jupiter.api.Nested;
@@ -31,7 +34,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-class VendorAndCustomerServiceTest {
+class VendorAndCustomerServiceImplTest {
 
     @Nested
     @ExtendWith(MockitoExtension.class)
@@ -39,7 +42,7 @@ class VendorAndCustomerServiceTest {
         @Mock VendorRepository vendorRepository;
         @Mock UsageClient usage;
         @Mock AuditService auditService;
-        @InjectMocks VendorService service;
+        @InjectMocks VendorServiceImpl service;
 
         @Test
         void createsVendorWithContactDetails() {
@@ -112,7 +115,7 @@ class VendorAndCustomerServiceTest {
         @Mock BusinessEntityService entityService;
         @Mock UsageClient usage;
         @Mock AuditService auditService;
-        @InjectMocks CustomerService service;
+        @InjectMocks CustomerServiceImpl service;
 
         @Test
         void customerIsLinkedToItsEntity() {

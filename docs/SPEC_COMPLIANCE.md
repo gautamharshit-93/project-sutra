@@ -1,7 +1,7 @@
 # SUTRA — specification compliance
 
 Checked against *Project SUTRA Final Specification* (sections 2–9) on the code as of 09 Nov 2026.
-Every rule is met; nothing is partial. (Replaces `SPEC_COMPLIANCE_V1.md`, which described the version-1 monolith.)
+Every rule is met; nothing is partial.
 
 ## 2. Technology stack
 
@@ -12,7 +12,7 @@ Every rule is met; nothing is partial. (Replaces `SPEC_COMPLIANCE_V1.md`, which 
 | PostgreSQL | PostgreSQL 18; one schema per service, Flyway migrations in `database/<service>/` |
 | Python document processing (PDF, Excel, Word) | `ai/` FastAPI: `/parse` (file to text), `/extract` (rule-based reader), `/match` (item matcher) |
 | OCR for scanned PDFs | Apache PDFBox renders pages, local Tesseract OCR (English + Hindi) reads them: `PdfOcrReader` |
-| JUnit + Mockito | JUnit 6 + Mockito 5: 243 backend tests |
+| JUnit + Mockito | JUnit 6 + Mockito 5: 246 backend tests |
 
 ## 3.1 Administrator and master data
 
@@ -98,7 +98,7 @@ Every rule is met; nothing is partial. (Replaces `SPEC_COMPLIANCE_V1.md`, which 
 
 | Rule | Where |
 |------|-------|
-| Service-layer tests with JUnit + Mockito | 243 backend tests; repositories, other services and Groq are mocked |
+| Service-layer tests with JUnit + Mockito | 246 backend tests; repositories, other services and Groq are mocked |
 | CRUD rules and relationships | `BusinessEntityServiceTest`, `VendorAndCustomerServiceTest`, `SelfServiceMasterDataTest`, `UserServiceTest`, `VendorSignupServiceTest`, `PurchaseRequestServiceTest`, `NewFeaturesServiceTest` |
 | Quotation validation, comparison and approval rules | `QuotationValidatorTest`, `QuotationCalculatorTest`, `QuotationReviewServiceTest`, `ComparisonEngineTest`, `ComparisonServiceTest`, `ApprovalServiceTest`, `VendorPortalServiceTest` |
 | Custom exceptions | Asserted throughout the service tests |
@@ -108,4 +108,4 @@ Every rule is met; nothing is partial. (Replaces `SPEC_COMPLIANCE_V1.md`, which 
 ## 9. Acceptance criteria
 
 `ai/scripts/acceptance_test.py` runs the whole workflow against a separate copy of the system and checks every
-criterion: 74 of 74 checks pass (`docs/ACCEPTANCE_RESULTS.md`).
+criterion: 75 of 75 checks pass (`docs/ACCEPTANCE_RESULTS.md`).

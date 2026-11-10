@@ -1,4 +1,4 @@
-package com.sutra.masterdata.entity;
+package com.sutra.masterdata.entity.base;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;

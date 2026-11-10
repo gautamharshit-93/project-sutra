@@ -1,6 +1,6 @@
 package com.sutra.gateway;
 
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -20,8 +20,8 @@ public class CorsConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(properties.corsAllowedOrigins().toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Authorization", "Content-Type", RequestIdFilter.HEADER)
-                .exposedHeaders("Content-Disposition", RequestIdFilter.HEADER)
+                .allowedHeaders("Authorization", "Content-Type", CorrelationIdFilter.HEADER)
+                .exposedHeaders("Content-Disposition", CorrelationIdFilter.HEADER)
                 .maxAge(3600);
     }
 }

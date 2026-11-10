@@ -1,5 +1,6 @@
-package com.sutra.auth.service;
+package com.sutra.auth.service.impl;
 
+import com.sutra.auth.service.impl.UserServiceImpl;
 import com.sutra.common.audit.AuditService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,9 +20,9 @@ import com.sutra.auth.repository.AppUserRepository;
 import com.sutra.auth.client.MasterDataClient;
 import com.sutra.auth.client.ProcurementClient;
 import com.sutra.auth.repository.RoleRepository;
-import com.sutra.auth.request.UserRequest;
+import com.sutra.auth.dto.request.UserRequest;
 import com.sutra.common.security.CurrentUserProvider;
-import com.sutra.auth.security.LoginAttemptService;
+import com.sutra.auth.service.internal.LoginAttemptService;
 import com.sutra.auth.support.Fixtures;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
-class UserServiceTest {
+class UserServiceImplTest {
 
     @Mock AppUserRepository userRepository;
     @Mock RoleRepository roleRepository;
@@ -44,7 +45,7 @@ class UserServiceTest {
     @Mock LoginAttemptService loginAttempts;
     @Mock MasterDataClient masterData;
     @Mock ProcurementClient procurement;
-    @InjectMocks UserService service;
+    @InjectMocks UserServiceImpl service;
 
     @Test
     void createsUserWithHashedPasswordAndRoles() {
@@ -155,5 +156,19 @@ class UserServiceTest {
         service.delete(buyer.getId());
 
         verify(userRepository).delete(buyer);
+    }
+
+    @Test
+    void aWaitingVendorSignUpCannotBeActivatedThroughEditUser() {
+        AppUser waiting = Fixtures.user("kaveri", RoleName.VENDOR);
+        waiting.setActive(false);
+        waiting.setPendingApproval(true);
+        when(userRepository.findById(waiting.getId())).thenReturn(Optional.of(waiting));
+
+        assertThatThrownBy(() -> service.update(waiting.getId(), new UserRequest("kaveri", "k@x.in", "Kaveri", null,
+                Set.of(RoleName.VENDOR), true, 5L)))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting("code").isEqualTo("SIGNUP_PENDING");
+        assertThat(waiting.isActive()).isFalse();
     }
 }

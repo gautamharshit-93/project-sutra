@@ -1,0 +1,90 @@
+server:
+  port: ${EXTRACTION_PORT:8087}
+
+spring:
+  application:
+    name: extraction-service
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sutra_db}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+    hikari:
+      schema: extraction
+      maximum-pool-size: 5
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+      "[hibernate.default_schema]": extraction
+  flyway:
+    enabled: true
+    schemas: extraction
+    default-schema: extraction
+    # Migrations live with the service: src/main/resources/db/migration
+    locations: ${EXTRACTION_MIGRATIONS:classpath:db/migration}
+    # Foreign keys into other services' schemas (same database); off where a schema is tested alone.
+    placeholders:
+      crossSchemaFks: ${CROSS_SCHEMA_FKS:true}
+  servlet:
+    multipart:
+      max-file-size: ${SUTRA_MAX_FILE_MB:20}MB
+      max-request-size: ${SUTRA_MAX_REQUEST_MB:60}MB
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+  services:
+    quotation: ${QUOTATION_URL:http://localhost:8085}
+    document: ${DOCUMENT_URL:http://localhost:8086}
+    audit: ${AUDIT_URL:http://localhost:8084}
+  files:
+    max-size-bytes: ${SUTRA_MAX_FILE_BYTES:20971520}
+  ai:
+    # Python document service (folder /ai): file-to-text, fuzzy matching and the rule-based reader
+    service-url: ${AI_SERVICE_URL:http://localhost:8000}
+    service-timeout-seconds: ${AI_SERVICE_TIMEOUT:60}
+    groq:
+      api-key: ${GROQ_API_KEY:}
+      model: ${GROQ_MODEL:openai/gpt-oss-120b}
+      base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+      max-output-tokens: ${GROQ_MAX_OUTPUT_TOKENS:16000}
+      timeout-seconds: ${GROQ_TIMEOUT:120}
+    # Scanned PDFs: Apache PDFBox renders each page, the local Tesseract OCR engine reads it
+    ocr:
+      enabled: ${SUTRA_OCR_ENABLED:true}
+      tesseract-path: ${TESSERACT_PATH:}
+      languages: ${TESSERACT_LANGUAGES:eng}
+      dpi: ${SUTRA_OCR_DPI:300}
+      max-pages: ${SUTRA_OCR_MAX_PAGES:30}
+      timeout-seconds: ${SUTRA_OCR_TIMEOUT:120}
+    review-confidence-threshold: 0.75
+    match-confidence-threshold: 0.6
+  extraction:
+    engine-order: ${SUTRA_ENGINE_ORDER:GROQ,RULES}
+    # Extractions run one at a time by default so free tiers are not hit with bursts.
+    concurrency: ${SUTRA_EXTRACTION_CONCURRENCY:1}
+    groq-fallback-models: ${GROQ_FALLBACK_MODELS:openai/gpt-oss-20b,qwen/qwen3.8-27b}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

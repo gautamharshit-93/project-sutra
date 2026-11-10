@@ -1,5 +1,6 @@
-package com.sutra.auth.service;
+package com.sutra.auth.service.impl;
 
+import com.sutra.auth.service.UserService;
 import com.sutra.common.audit.AuditService;
 
 import static com.sutra.common.audit.AuditService.details;
@@ -14,12 +15,12 @@ import com.sutra.common.error.DuplicateResourceException;
 import com.sutra.auth.exception.UserNotFoundException;
 import com.sutra.auth.repository.AppUserRepository;
 import com.sutra.auth.repository.RoleRepository;
-import com.sutra.auth.request.UserRequest;
+import com.sutra.auth.dto.request.UserRequest;
 import com.sutra.common.web.PageResponse;
-import com.sutra.auth.response.UserResponses.RoleResponse;
-import com.sutra.auth.response.UserResponses.UserResponse;
+import com.sutra.auth.dto.response.UserResponses.RoleResponse;
+import com.sutra.auth.dto.response.UserResponses.UserResponse;
 import com.sutra.common.security.CurrentUserProvider;
-import com.sutra.auth.security.LoginAttemptService;
+import com.sutra.auth.service.internal.LoginAttemptService;
 import com.sutra.common.util.Text;
 import java.util.HashSet;
 import java.util.List;
@@ -34,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** User accounts and role assignment (administrators only). */
 @Service
 @Transactional
-public class UserService {
+public class UserServiceImpl implements UserService {
 
     static final String AUDIT_TYPE = "USER";
 
@@ -47,7 +48,7 @@ public class UserService {
     private final MasterDataClient masterData;
     private final ProcurementClient procurement;
 
-    public UserService(AppUserRepository userRepository, RoleRepository roleRepository,
+    public UserServiceImpl(AppUserRepository userRepository, RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder, CurrentUserProvider currentUser,
                        AuditService auditService, LoginAttemptService loginAttempts, MasterDataClient masterData,
                        ProcurementClient procurement) {
@@ -62,22 +63,26 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    @Override
     public PageResponse<UserResponse> search(String q, int page, int size) {
         var pageable = PageRequest.of(page, Math.min(size, 200), Sort.by(AppUser::getUsername));
         return PageResponse.of(userRepository.search(Text.blankToNull(q), pageable), UserResponse::from);
     }
 
     @Transactional(readOnly = true)
+    @Override
     public UserResponse get(Long id) {
         return UserResponse.from(find(id));
     }
 
     @Transactional(readOnly = true)
+    @Override
     public List<RoleResponse> roles() {
         return roleRepository.findAll(Sort.by(Role::getId)).stream()
                 .map(r -> new RoleResponse(r.getName(), r.getDescription())).toList();
     }
 
+    @Override
     public UserResponse create(UserRequest request) {
         String username = request.username().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByUsernameIgnoreCase(username)) {
@@ -103,8 +108,13 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    @Override
     public UserResponse update(Long id, UserRequest request) {
         AppUser user = find(id);
+        if (user.isPendingApproval()) {
+            throw new BusinessRuleException("SIGNUP_PENDING",
+                    user.getUsername() + " is a vendor sign-up waiting for approval: approve or reject it instead");
+        }
         if (!user.getUsername().equalsIgnoreCase(request.username().trim())) {
             throw new BusinessRuleException("USERNAME_IMMUTABLE", "Usernames cannot be changed");
         }
@@ -132,6 +142,7 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    @Override
     public void delete(Long id) {
         AppUser user = find(id);
         if (id.equals(currentUser.requirePrincipal().getId())) {
@@ -145,6 +156,7 @@ public class UserService {
         auditService.record(AUDIT_TYPE, id, "DELETED", details("username", user.getUsername()));
     }
 
+    @Override
     public AppUser find(Long id) {
         return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(id));
     }

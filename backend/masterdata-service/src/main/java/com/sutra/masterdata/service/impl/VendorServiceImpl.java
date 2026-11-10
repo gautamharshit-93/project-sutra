@@ -1,5 +1,7 @@
-package com.sutra.masterdata.service;
+package com.sutra.masterdata.service.impl;
 
+import com.sutra.masterdata.service.internal.CodeGenerator;
+import com.sutra.masterdata.service.VendorService;
 import com.sutra.common.audit.AuditService;
 
 import static com.sutra.common.audit.AuditService.details;
@@ -10,10 +12,10 @@ import com.sutra.common.error.DuplicateResourceException;
 import com.sutra.masterdata.exception.VendorNotFoundException;
 import com.sutra.masterdata.client.UsageClient;
 import com.sutra.masterdata.repository.VendorRepository;
-import com.sutra.masterdata.request.MasterDataRequests.VendorRequest;
-import com.sutra.masterdata.request.MasterDataRequests.VendorProfileRequest;
-import com.sutra.masterdata.request.MasterDataRequests.VendorSignupRequest;
-import com.sutra.masterdata.response.MasterDataResponses.VendorResponse;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorProfileRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorSignupRequest;
+import com.sutra.masterdata.dto.response.MasterDataResponses.VendorResponse;
 import com.sutra.common.web.PageResponse;
 import com.sutra.common.util.Text;
 import org.springframework.data.domain.PageRequest;
@@ -23,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class VendorService {
+public class VendorServiceImpl implements VendorService {
 
     static final String AUDIT_TYPE = "VENDOR";
 
@@ -31,7 +33,7 @@ public class VendorService {
     private final UsageClient usage;
     private final AuditService auditService;
 
-    public VendorService(VendorRepository vendorRepository, UsageClient usage,
+    public VendorServiceImpl(VendorRepository vendorRepository, UsageClient usage,
                          AuditService auditService) {
         this.vendorRepository = vendorRepository;
         this.usage = usage;
@@ -39,18 +41,21 @@ public class VendorService {
     }
 
     @Transactional(readOnly = true)
+    @Override
     public PageResponse<VendorResponse> search(String q, int page, int size) {
         var pageable = PageRequest.of(page, Math.min(size, 200), Sort.by(Vendor::getName));
         return PageResponse.of(vendorRepository.search(Text.blankToNull(q), pageable), VendorResponse::from);
     }
 
     @Transactional(readOnly = true)
+    @Override
     public VendorResponse get(Long id) {
         return VendorResponse.from(find(id));
     }
 
+    @Override
     public VendorResponse create(VendorRequest request) {
-        String code = BusinessEntityService.normaliseCode(request.code());
+        String code = CodeGenerator.normalise(request.code());
         if (vendorRepository.existsByCodeIgnoreCase(code)) {
             throw new DuplicateResourceException("A vendor with code " + code + " already exists");
         }
@@ -62,8 +67,9 @@ public class VendorService {
     }
 
     /** A vendor approved after signing up on the portal; its code is made from the name. */
+    @Override
     public VendorResponse register(VendorSignupRequest request) {
-        String code = BusinessEntityService.codeFromName(request.name(), vendorRepository::existsByCodeIgnoreCase);
+        String code = CodeGenerator.fromName(request.name(), vendorRepository::existsByCodeIgnoreCase);
         Vendor vendor = new Vendor();
         apply(vendor, new VendorRequest(code, request.name(), request.contactPerson(), request.email(), request.phone(),
                 request.address(), request.taxNumber(), request.website(), true), code);
@@ -74,6 +80,7 @@ public class VendorService {
     }
 
     /** A vendor updating its own contact and tax details on the portal. */
+    @Override
     public VendorResponse updateProfile(Long id, VendorProfileRequest request) {
         Vendor vendor = find(id);
         vendor.setContactPerson(Text.blankToNull(request.contactPerson()));
@@ -86,9 +93,10 @@ public class VendorService {
         return VendorResponse.from(vendor);
     }
 
+    @Override
     public VendorResponse update(Long id, VendorRequest request) {
         Vendor vendor = find(id);
-        String code = BusinessEntityService.normaliseCode(request.code());
+        String code = CodeGenerator.normalise(request.code());
         if (vendorRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
             throw new DuplicateResourceException("A vendor with code " + code + " already exists");
         }
@@ -97,6 +105,7 @@ public class VendorService {
         return VendorResponse.from(vendor);
     }
 
+    @Override
     public void delete(Long id) {
         Vendor vendor = find(id);
         if (usage.procurementUsage("vendors", id).inUse()) {
@@ -111,11 +120,13 @@ public class VendorService {
         auditService.record(AUDIT_TYPE, id, "DELETED", details("code", vendor.getCode()));
     }
 
+    @Override
     public Vendor find(Long id) {
         return vendorRepository.findById(id).orElseThrow(() -> new VendorNotFoundException(id));
     }
 
     /** A vendor that can receive new quotations. */
+    @Override
     public Vendor findActive(Long id) {
         Vendor vendor = find(id);
         if (!vendor.isActive()) {

@@ -1,7 +1,7 @@
 package com.sutra.gateway;
 
 import com.sutra.common.error.ApiError;
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -74,9 +74,9 @@ public class ProxyController {
                 }
             }
         }
-        String requestId = RequestIdFilter.current();
-        if (requestId != null) {
-            out.setHeader(RequestIdFilter.HEADER, requestId);
+        String correlationId = CorrelationIdFilter.current();
+        if (correlationId != null) {
+            out.setHeader(CorrelationIdFilter.HEADER, correlationId);
         }
         out.header("X-Forwarded-For", request.getRemoteAddr());
         boolean hasBody = request.getContentLengthLong() > 0 || request.getHeader("Transfer-Encoding") != null;
@@ -108,7 +108,7 @@ public class ProxyController {
         answer.headers().map().forEach((name, values) -> {
             String lower = name.toLowerCase(Locale.ROOT);
             if (!SKIP_RESPONSE.contains(lower) && !lower.startsWith(ACCESS_CONTROL) && !lower.equals(":status")
-                    && !lower.equalsIgnoreCase(RequestIdFilter.HEADER)) {
+                    && !lower.equalsIgnoreCase(CorrelationIdFilter.HEADER)) {
                 values.forEach(v -> response.addHeader(name, v));
             }
         });
@@ -123,6 +123,6 @@ public class ProxyController {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getOutputStream(),
-                new ApiError(Instant.now(), status, error, code, message, path, null, RequestIdFilter.current()));
+                new ApiError(Instant.now(), status, error, code, message, path, null, CorrelationIdFilter.current()));
     }
 }

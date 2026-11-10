@@ -7,7 +7,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-/** Asks the procurement service whether a user owns records, before the user may be deleted. */
+/**
+ * Asks the RFQ, quotation and approval services whether a user owns records (RFQs raised, quotations uploaded,
+ * decisions made), before the user may be deleted.
+ */
 @Component
 public class ProcurementClient {
 
@@ -19,22 +22,33 @@ public class ProcurementClient {
         }
     }
 
-    private final RestClient client;
+    private final RestClient rfq;
+    private final RestClient quotation;
+    private final RestClient approval;
 
     public ProcurementClient(InternalRestClients clients, ServiceUrls urls) {
-        this.client = clients.forBaseUrl(urls.procurement());
+        this.rfq = clients.forBaseUrl(urls.rfq());
+        this.quotation = clients.forBaseUrl(urls.quotation());
+        this.approval = clients.forBaseUrl(urls.approval());
     }
 
-    /** Fails safe: if procurement cannot be asked, the caller must not delete. */
+    /** Fails safe: if a service cannot be asked, the caller must not delete. Decisions count as RFQs. */
     public Usage userUsage(Long userId) {
+        Usage raised = usage(rfq, "RFQ service", userId);
+        Usage uploaded = usage(quotation, "quotation service", userId);
+        Usage decided = usage(approval, "approval service", userId);
+        return new Usage(raised.purchaseRequests() + decided.purchaseRequests(), uploaded.quotations());
+    }
+
+    private static Usage usage(RestClient client, String service, Long userId) {
         try {
             Usage usage = client.get().uri("/internal/usage/users/{id}", userId).retrieve().body(Usage.class);
             if (usage == null) {
-                throw new ServiceUnavailableException("procurement service", null);
+                throw new ServiceUnavailableException(service, null);
             }
             return usage;
         } catch (RestClientException e) {
-            throw new ServiceUnavailableException("procurement service", e);
+            throw new ServiceUnavailableException(service, e);
         }
     }
 }

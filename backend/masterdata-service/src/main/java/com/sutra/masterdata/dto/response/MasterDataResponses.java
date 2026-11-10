@@ -1,4 +1,4 @@
-package com.sutra.masterdata.response;
+package com.sutra.masterdata.dto.response;
 
 import com.sutra.masterdata.entity.BusinessEntity;
 import com.sutra.masterdata.entity.Customer;

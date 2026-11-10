@@ -11,7 +11,7 @@ import com.sutra.masterdata.service.BusinessEntityService;
 import com.sutra.masterdata.service.CustomerService;
 import com.sutra.masterdata.service.VendorService;
 import org.springframework.transaction.annotation.Transactional;
-import com.sutra.masterdata.request.MasterDataRequests.VendorSignupRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorSignupRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

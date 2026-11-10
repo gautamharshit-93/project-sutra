@@ -1,5 +1,6 @@
-package com.sutra.masterdata.service;
+package com.sutra.masterdata.service.impl;
 
+import com.sutra.masterdata.service.impl.BusinessEntityServiceImpl;
 import com.sutra.common.audit.AuditService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,8 +21,8 @@ import com.sutra.masterdata.repository.BusinessEntityRepository;
 import com.sutra.masterdata.repository.CustomerRepository;
 import com.sutra.masterdata.client.UsageClient;
 import com.sutra.masterdata.repository.SubEntityRepository;
-import com.sutra.masterdata.request.MasterDataRequests.EntityRequest;
-import com.sutra.masterdata.request.MasterDataRequests.SubEntityRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.EntityRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.SubEntityRequest;
 import com.sutra.masterdata.support.Fixtures;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -31,14 +32,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class BusinessEntityServiceTest {
+class BusinessEntityServiceImplTest {
 
     @Mock BusinessEntityRepository entityRepository;
     @Mock SubEntityRepository subEntityRepository;
     @Mock CustomerRepository customerRepository;
     @Mock UsageClient usage;
     @Mock AuditService auditService;
-    @InjectMocks BusinessEntityService service;
+    @InjectMocks BusinessEntityServiceImpl service;
 
     @Test
     void createNormalisesCodeSavesAndAudits() {

@@ -1,4 +1,4 @@
-package com.sutra.auth.response;
+package com.sutra.auth.dto.response;
 
 import com.sutra.auth.entity.AppUser;
 import com.sutra.common.security.RoleName;

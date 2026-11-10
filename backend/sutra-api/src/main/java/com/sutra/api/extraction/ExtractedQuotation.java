@@ -1,4 +1,4 @@
-package com.sutra.procurement.ai;
+package com.sutra.api.extraction;
 
 import java.math.BigDecimal;
 import java.util.List;

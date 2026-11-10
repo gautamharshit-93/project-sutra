@@ -57,6 +57,24 @@ class PublicEndpointRateLimiterTest {
         assertThat(limiter.isLimited("/api/auth/me")).isFalse();
     }
 
+    @Test
+    void behindTheLocalDevProxyEachUserCountsSeparatelyAndCannotFakeTheirAddress() {
+        var viaProxy = new org.springframework.mock.web.MockHttpServletRequest();
+        viaProxy.setRemoteAddr("127.0.0.1");
+        viaProxy.addHeader("X-Forwarded-For", "203.0.113.9");
+        assertThat(PublicEndpointRateLimiter.clientAddress(viaProxy)).isEqualTo("203.0.113.9");
+
+        var spoofed = new org.springframework.mock.web.MockHttpServletRequest();
+        spoofed.setRemoteAddr("127.0.0.1");
+        spoofed.addHeader("X-Forwarded-For", "1.2.3.4, 203.0.113.9"); // client-sent value, then the proxy's
+        assertThat(PublicEndpointRateLimiter.clientAddress(spoofed)).isEqualTo("203.0.113.9");
+
+        var direct = new org.springframework.mock.web.MockHttpServletRequest();
+        direct.setRemoteAddr("198.51.100.7");
+        direct.addHeader("X-Forwarded-For", "1.2.3.4"); // not from a local proxy: ignored
+        assertThat(PublicEndpointRateLimiter.clientAddress(direct)).isEqualTo("198.51.100.7");
+    }
+
     private static final class MutableClock extends Clock {
         private Instant now;
 

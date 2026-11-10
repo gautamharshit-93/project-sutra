@@ -32,4 +32,12 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     @Query("select a.eventId from AuditLog a where a.eventId in :ids")
     List<UUID> findExistingEventIds(@Param("ids") Collection<UUID> ids);
+
+    /** Entries stored before the hash chain existed, oldest first (linked into the chain once, at start-up). */
+    List<AuditLog> findTop500BySequenceNoIsNullOrderByIdAsc();
+
+    /** The next page of the chain after {@code sequenceNo} (keyset paging: constant cost however long the log). */
+    List<AuditLog> findBySequenceNoGreaterThanOrderBySequenceNoAsc(long sequenceNo, Pageable pageable);
+
+    long countBySequenceNoIsNull();
 }

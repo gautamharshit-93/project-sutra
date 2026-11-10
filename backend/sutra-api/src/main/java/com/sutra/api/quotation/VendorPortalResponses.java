@@ -1,10 +1,8 @@
-package com.sutra.procurement.response;
+package com.sutra.api.quotation;
 
-import com.sutra.procurement.entity.PurchaseRequest;
-import com.sutra.procurement.entity.RequestItem;
-import com.sutra.procurement.entity.enums.PurchaseRequestStatus;
-import com.sutra.procurement.entity.enums.QuotationStatus;
-import com.sutra.procurement.response.QuotationResponses.FileResponse;
+import com.sutra.api.enums.PurchaseRequestStatus;
+import com.sutra.api.enums.QuotationStatus;
+import com.sutra.api.quotation.QuotationResponses.FileResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -48,10 +46,6 @@ public final class VendorPortalResponses {
 
     public record RfqItem(Integer lineNumber, String itemCode, String description, BigDecimal quantity,
                           String unitOfMeasure, String specifications) {
-        static RfqItem from(RequestItem i) {
-            return new RfqItem(i.getLineNumber(), i.getItemCode(), i.getDescription(), i.getQuantity(),
-                    i.getUnitOfMeasure(), i.getSpecifications());
-        }
     }
 
     public record VendorQuotation(Long id, Long rfqId, String rfqNumber, String rfqTitle, String quotationNumber,
@@ -68,12 +62,5 @@ public final class VendorPortalResponses {
     public record RfqDetail(Long id, String rfqNumber, String title, String description, String buyer,
                             String currency, LocalDate requiredBy, boolean openForQuotations, Instant publishedAt,
                             List<RfqItem> items, List<VendorQuotation> myQuotations, LocalDate quotationsDue) {
-
-        public static RfqDetail of(PurchaseRequest pr, List<VendorQuotation> mine, java.time.LocalDate today) {
-            return new RfqDetail(pr.getId(), pr.getRequestNumber(), pr.getTitle(), pr.getDescription(),
-                    pr.getEntity().getName(), pr.getCurrency(), pr.getRequiredBy(),
-                    pr.acceptsVendorQuotations(today), pr.getCreatedAt(),
-                    pr.getItems().stream().map(RfqItem::from).toList(), mine, pr.getQuotationsDue());
-        }
     }
 }

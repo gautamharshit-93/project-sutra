@@ -13,7 +13,11 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** One entry of the audit trail, as sent by the service where the action happened. Never changed or deleted. */
+/**
+ * One entry of the audit trail, as sent by the service where the action happened. Never changed or deleted (a
+ * database trigger refuses both). {@code hash} = SHA-256 over this entry's content and {@code previousHash}, so a
+ * changed, removed or re-ordered entry breaks the chain (see {@code AuditHashCalculator}).
+ */
 @Entity
 @Table(name = "audit_log")
 @Getter
@@ -55,4 +59,18 @@ public class AuditLog {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", updatable = false)
     private String details;
+
+    /** Follows one user action through every service (X-Correlation-Id). */
+    @Column(name = "correlation_id", length = 64, updatable = false)
+    private String correlationId;
+
+    /** Position in the hash chain: 1, 2, 3 ... in the order entries were stored. */
+    @Column(name = "sequence_no", unique = true)
+    private Long sequenceNo;
+
+    @Column(name = "previous_hash", length = 64)
+    private String previousHash;
+
+    @Column(length = 64)
+    private String hash;
 }

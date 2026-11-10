@@ -1,4 +1,4 @@
-package com.sutra.masterdata.request;
+package com.sutra.masterdata.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

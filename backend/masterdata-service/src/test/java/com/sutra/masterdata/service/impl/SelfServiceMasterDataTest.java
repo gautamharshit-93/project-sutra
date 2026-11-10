@@ -1,5 +1,8 @@
-package com.sutra.masterdata.service;
+package com.sutra.masterdata.service.impl;
 
+import com.sutra.masterdata.service.internal.CodeGenerator;
+import com.sutra.masterdata.service.impl.VendorServiceImpl;
+import com.sutra.masterdata.service.impl.BusinessEntityServiceImpl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,10 +20,10 @@ import com.sutra.masterdata.repository.BusinessEntityRepository;
 import com.sutra.masterdata.repository.CustomerRepository;
 import com.sutra.masterdata.repository.SubEntityRepository;
 import com.sutra.masterdata.repository.VendorRepository;
-import com.sutra.masterdata.request.MasterDataRequests.EntityRequest;
-import com.sutra.masterdata.request.MasterDataRequests.SubEntityRequest;
-import com.sutra.masterdata.request.MasterDataRequests.VendorProfileRequest;
-import com.sutra.masterdata.request.MasterDataRequests.VendorSignupRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.EntityRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.SubEntityRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorProfileRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorSignupRequest;
 import com.sutra.masterdata.support.Fixtures;
 import java.util.Optional;
 import java.util.Set;
@@ -37,10 +40,10 @@ class SelfServiceMasterDataTest {
     @Test
     void codesAreMadeFromTheNameAndKeptUnique() {
         Set<String> taken = Set.of("AXIOMAUTOC", "AXIOMAUTOC-2");
-        assertThat(BusinessEntityService.codeFromName("Axiom Auto Components Pvt Ltd", taken::contains)).isEqualTo("AXIOMAUTOC-3");
-        assertThat(BusinessEntityService.codeFromName("Chakan plant", c -> false)).isEqualTo("CHAKANPLAN");
-        assertThat(BusinessEntityService.codeFromName("कावेरी", c -> false)).isEqualTo("CODE");
-        assertThat(BusinessEntityService.codeFromName("A", c -> false)).isEqualTo("CODEA");
+        assertThat(CodeGenerator.fromName("Axiom Auto Components Pvt Ltd", taken::contains)).isEqualTo("AXIOMAUTOC-3");
+        assertThat(CodeGenerator.fromName("Chakan plant", c -> false)).isEqualTo("CHAKANPLAN");
+        assertThat(CodeGenerator.fromName("कावेरी", c -> false)).isEqualTo("CODE");
+        assertThat(CodeGenerator.fromName("A", c -> false)).isEqualTo("CODEA");
     }
 
     @Nested
@@ -51,7 +54,7 @@ class SelfServiceMasterDataTest {
         @Mock CustomerRepository customerRepository;
         @Mock UsageClient usage;
         @Mock AuditService auditService;
-        @InjectMocks BusinessEntityService service;
+        @InjectMocks BusinessEntityServiceImpl service;
 
         @Test
         void anEntityNeedsOnlyAName() {
@@ -95,7 +98,7 @@ class SelfServiceMasterDataTest {
         @Mock VendorRepository vendorRepository;
         @Mock UsageClient usage;
         @Mock AuditService auditService;
-        @InjectMocks VendorService service;
+        @InjectMocks VendorServiceImpl service;
 
         @Test
         void anApprovedSignUpBecomesAnActiveVendor() {

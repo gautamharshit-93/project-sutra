@@ -1,5 +1,6 @@
-package com.sutra.auth.service;
+package com.sutra.auth.service.impl;
 
+import com.sutra.auth.service.VendorSignupService;
 import static com.sutra.common.audit.AuditService.details;
 
 import com.sutra.auth.client.MasterDataClient;
@@ -9,10 +10,10 @@ import com.sutra.auth.exception.UserNotFoundException;
 import com.sutra.auth.repository.AppUserRepository;
 import com.sutra.auth.repository.RoleRepository;
 import com.sutra.auth.repository.VendorSignupRepository;
-import com.sutra.auth.request.AuthRequests.VendorSignupRequest;
-import com.sutra.auth.response.UserResponses.SignupAccepted;
-import com.sutra.auth.response.UserResponses.UserResponse;
-import com.sutra.auth.response.UserResponses.VendorSignupResponse;
+import com.sutra.auth.dto.request.AuthRequests.VendorSignupRequest;
+import com.sutra.auth.dto.response.UserResponses.SignupAccepted;
+import com.sutra.auth.dto.response.UserResponses.UserResponse;
+import com.sutra.auth.dto.response.UserResponses.VendorSignupResponse;
 import com.sutra.common.audit.AuditService;
 import com.sutra.common.error.BusinessRuleException;
 import com.sutra.common.error.DuplicateResourceException;
@@ -32,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @Transactional
-public class VendorSignupService {
+public class VendorSignupServiceImpl implements VendorSignupService {
 
     private final AppUserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -41,7 +42,7 @@ public class VendorSignupService {
     private final MasterDataClient masterData;
     private final AuditService auditService;
 
-    public VendorSignupService(AppUserRepository userRepository, RoleRepository roleRepository,
+    public VendorSignupServiceImpl(AppUserRepository userRepository, RoleRepository roleRepository,
                                VendorSignupRepository signupRepository, PasswordEncoder passwordEncoder,
                                MasterDataClient masterData, AuditService auditService) {
         this.userRepository = userRepository;
@@ -52,6 +53,7 @@ public class VendorSignupService {
         this.auditService = auditService;
     }
 
+    @Override
     public SignupAccepted register(VendorSignupRequest request) {
         String username = request.username().trim().toLowerCase(Locale.ROOT);
         String email = request.email().trim().toLowerCase(Locale.ROOT);
@@ -88,11 +90,13 @@ public class VendorSignupService {
     }
 
     @Transactional(readOnly = true)
+    @Override
     public List<VendorSignupResponse> pending() {
         return signupRepository.findAllByOrderByCreatedAtAsc().stream().map(VendorSignupResponse::from).toList();
     }
 
     /** Creates the vendor in master data, links the login to it and activates the login. */
+    @Override
     public UserResponse approve(Long userId) {
         VendorSignup signup = find(userId);
         AppUser user = signup.getUser();
@@ -111,6 +115,7 @@ public class VendorSignupService {
     }
 
     /** Deletes the waiting login and its details. */
+    @Override
     public void reject(Long userId) {
         VendorSignup signup = find(userId);
         AppUser user = signup.getUser();

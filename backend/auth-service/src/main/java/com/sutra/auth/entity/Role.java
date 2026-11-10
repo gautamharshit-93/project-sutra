@@ -1,5 +1,6 @@
 package com.sutra.auth.entity;
 
+import com.sutra.auth.entity.base.BaseEntity;
 import com.sutra.common.security.RoleName;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

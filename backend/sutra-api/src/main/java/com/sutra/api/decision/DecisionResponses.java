@@ -1,9 +1,7 @@
-package com.sutra.procurement.response;
+package com.sutra.api.decision;
 
-import com.sutra.procurement.calculation.ComparisonResult;
-import com.sutra.procurement.entity.Approval;
-import com.sutra.procurement.entity.ComparisonReport;
-import com.sutra.procurement.entity.enums.ApprovalDecision;
+import com.sutra.api.comparison.ComparisonResult;
+import com.sutra.api.enums.ApprovalDecision;
 import java.time.Instant;
 import java.util.Map;
 
@@ -17,25 +15,12 @@ public final class DecisionResponses {
                                            String generatedBy, Instant generatedAt,
                                            Long lowestCompleteQuotationId, boolean latest,
                                            ComparisonResult result) {
-        public static ComparisonReportResponse from(ComparisonReport r, ComparisonResult result, boolean latest) {
-            return new ComparisonReportResponse(r.getId(), r.getPurchaseRequest().getId(), r.getReportVersion(),
-                    r.getGeneratedBy().getUsername(), r.getGeneratedAt(),
-                    r.getLowestCompleteQuotation() == null ? null : r.getLowestCompleteQuotation().getId(),
-                    latest, result);
-        }
     }
 
     public record ApprovalResponse(Long id, Long purchaseRequestId, Long comparisonReportId,
                                    Integer comparisonReportVersion, Long selectedQuotationId,
                                    String selectedVendorName, ApprovalDecision decision, String reason,
                                    String decidedBy, Instant decidedAt) {
-        public static ApprovalResponse from(Approval a) {
-            return new ApprovalResponse(a.getId(), a.getPurchaseRequest().getId(), a.getComparisonReport().getId(),
-                    a.getComparisonReport().getReportVersion(),
-                    a.getSelectedQuotation() == null ? null : a.getSelectedQuotation().getId(),
-                    a.getSelectedQuotation() == null ? null : a.getSelectedQuotation().getVendor().getName(),
-                    a.getDecision(), a.getReason(), a.getDecidedBy().getUsername(), a.getDecidedAt());
-        }
     }
 
     public record DashboardResponse(Long entities, Long customers, Long vendors,

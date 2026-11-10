@@ -1,7 +1,9 @@
-# Stops the SUTRA services listening on their usual ports (only Java, Python or Node processes started from this
-# project). Usage:  .\stop-all.ps1            all services
-#                   .\stop-all.ps1 8083       just one port
-param([int[]]$Ports = @(8080, 8081, 8082, 8083, 8084, 8000, 5173))
+# Stops the SUTRA processes listening on their usual ports: gateway 8080, services 8081-8090, document reader 8000,
+# UI 5173 (only Java, Python or Node processes started from this project). Usage:
+#   .\stop-all.ps1                       everything
+#   .\stop-all.ps1 8083                  one port
+#   .\stop-all.ps1 (9080..9090)          the acceptance copy
+param([int[]]$Ports = @(8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089, 8090, 8000, 5173))
 
 foreach ($port in $Ports) {
     # The State column is not always filled in, so take the listening socket's owner (closed sockets show pid 0)

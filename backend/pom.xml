@@ -19,11 +19,18 @@
     <description>Vendor Quotation Management System - microservices (see docs/SUTRA_System_Architecture.docx)</description>
 
     <modules>
+        <module>sutra-api</module>
         <module>sutra-common</module>
         <module>gateway</module>
         <module>auth-service</module>
         <module>masterdata-service</module>
-        <module>procurement-service</module>
+        <module>document-service</module>
+        <module>rfq-service</module>
+        <module>extraction-service</module>
+        <module>quotation-service</module>
+        <module>comparison-service</module>
+        <module>approval-service</module>
+        <module>reporting-service</module>
         <module>audit-service</module>
     </modules>
 
@@ -43,6 +50,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.sutra</groupId>
+                <artifactId>sutra-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.sutra</groupId>
                 <artifactId>sutra-common</artifactId>

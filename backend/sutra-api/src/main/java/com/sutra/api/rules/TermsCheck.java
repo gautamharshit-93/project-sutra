@@ -1,4 +1,4 @@
-package com.sutra.procurement.calculation;
+package com.sutra.api.rules;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -43,7 +43,7 @@ public final class TermsCheck {
         return Optional.empty();
     }
 
-    static String label(String field) {
+    public static String label(String field) {
         return switch (field) {
             case "deliveryTerms" -> "Delivery terms";
             case "paymentTerms" -> "Payment terms";

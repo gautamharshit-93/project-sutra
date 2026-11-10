@@ -12,7 +12,7 @@ public record ApiError(
         String message,
         String path,
         List<FieldError> fieldErrors,
-        String requestId) {
+        String correlationId) {
 
     public record FieldError(String field, String message) {
     }

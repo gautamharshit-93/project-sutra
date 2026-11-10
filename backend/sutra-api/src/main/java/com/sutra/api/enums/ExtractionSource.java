@@ -1,4 +1,4 @@
-package com.sutra.procurement.entity.enums;
+package com.sutra.api.enums;
 
 /**
  * How a quotation's data was obtained: by an extraction engine (GROQ, or RULES = the rule-based reader without

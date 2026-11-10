@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClientException;
 
 /**
  * Asks the services that reference master data whether a record is still in use, before it may be deleted:
- * procurement (purchase requests, quotations) and auth (vendor logins). Fails safe: when a service cannot be
+ * the RFQ service (entities, sub-entities, customers), the quotation service (vendors) and auth (vendor logins). Fails safe: when a service cannot be
  * asked, the delete is refused.
  */
 @Component
@@ -27,24 +27,29 @@ public class UsageClient {
     public record VendorLogins(long users) {
     }
 
-    private final RestClient procurement;
+    private final RestClient rfq;
+    private final RestClient quotation;
     private final RestClient auth;
 
     public UsageClient(InternalRestClients clients, ServiceUrls urls) {
-        this.procurement = clients.forBaseUrl(urls.procurement());
+        this.rfq = clients.forBaseUrl(urls.rfq());
+        this.quotation = clients.forBaseUrl(urls.quotation());
         this.auth = clients.forBaseUrl(urls.auth());
     }
 
     /** {@code kind} is entities, sub-entities, customers or vendors. */
     public Usage procurementUsage(String kind, Long id) {
+        boolean vendors = "vendors".equals(kind);
+        RestClient owner = vendors ? quotation : rfq;
+        String service = vendors ? "quotation service" : "RFQ service";
         try {
-            Usage usage = procurement.get().uri("/internal/usage/{kind}/{id}", kind, id).retrieve().body(Usage.class);
+            Usage usage = owner.get().uri("/internal/usage/{kind}/{id}", kind, id).retrieve().body(Usage.class);
             if (usage == null) {
-                throw new ServiceUnavailableException("procurement service", null);
+                throw new ServiceUnavailableException(service, null);
             }
             return usage;
         } catch (RestClientException e) {
-            throw new ServiceUnavailableException("procurement service", e);
+            throw new ServiceUnavailableException(service, e);
         }
     }
 

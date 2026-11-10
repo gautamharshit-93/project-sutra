@@ -1,4 +1,4 @@
-package com.sutra.auth.request;
+package com.sutra.auth.dto.request;
 
 import com.sutra.common.security.RoleName;
 import jakarta.validation.constraints.Email;

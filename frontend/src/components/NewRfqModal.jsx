@@ -142,7 +142,8 @@ export default function NewRfqModal({ initialDraft = null, initialFiles = null, 
                 <input value={values.title} onChange={set('title')} placeholder="e.g. Production materials for Q1" />
               </Field>
               <Field label="Quotations due by" hint="Vendors can send quotations until this day">
-                <input type="date" value={values.quotationsDue} onChange={set('quotationsDue')} />
+                <input type="date" value={values.quotationsDue} min={new Date().toLocaleDateString('en-CA')}
+                       max={values.requiredBy || undefined} onChange={set('quotationsDue')} />
               </Field>
               <Field label="Goods required by">
                 <input type="date" value={values.requiredBy} onChange={set('requiredBy')} />

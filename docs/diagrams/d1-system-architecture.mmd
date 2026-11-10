@@ -1,0 +1,57 @@
+%% D1 · SYSTEM ARCHITECTURE (horizontal, read left to right)
+%% Users -> React app -> Gateway -> 4 Spring Boot services -> their PostgreSQL schemas + document readers
+flowchart LR
+
+  subgraph USERS["USERS"]
+    direction TB
+    ADM["Admin"]
+    BUY["Buyer"]
+    VEN["Vendor"]
+    MGR["Manager"]
+  end
+
+  UI["React 18 app<br/>:5173"]
+  GW["Gateway :8080<br/>JWT check<br/>rate limit · routing"]
+
+  subgraph SVC["SPRING BOOT 4.1 SERVICES · sutra-common"]
+    direction TB
+    AUTH["auth :8081<br/>users · roles · sign-in<br/>vendor approval"]
+    MD["masterdata :8082<br/>entities · customers<br/>vendors"]
+    PROC["procurement :8083<br/>RFQs · quotations<br/>compare · award · PDF"]
+    AUD["audit :8084<br/>audit log<br/>events via outbox"]
+  end
+
+  subgraph DB["POSTGRESQL 18 · Flyway"]
+    direction TB
+    S_AUTH[("auth")]
+    S_MD[("masterdata")]
+    S_PROC[("procurement<br/>files as BYTEA")]
+    S_AUD[("audit")]
+  end
+
+  subgraph READ["DOCUMENT READING"]
+    direction TB
+    PY["Python :8000<br/>file to text"]
+    OCR["Tesseract<br/>OCR"]
+    GROQ["Groq AI<br/>strict JSON"]
+  end
+
+  USERS --> UI -->|"/api + JWT"| GW
+  GW --> AUTH
+  GW --> MD
+  GW --> PROC
+  GW --> AUD
+  AUTH --> S_AUTH
+  MD --> S_MD
+  PROC --> S_PROC
+  AUD --> S_AUD
+  PROC --> READ
+
+  classDef actor fill:#000000,color:#ffffff,stroke:#000000
+  classDef edge fill:#ffffff,color:#000000,stroke:#000000,stroke-width:2px
+  classDef svc fill:#ff0000,color:#ffffff,stroke:#000000
+  classDef store fill:#eeeeee,color:#000000,stroke:#000000
+  class ADM,BUY,VEN,MGR actor
+  class UI,GW edge
+  class AUTH,MD,PROC,AUD svc
+  class S_AUTH,S_MD,S_PROC,S_AUD,PY,OCR,GROQ store

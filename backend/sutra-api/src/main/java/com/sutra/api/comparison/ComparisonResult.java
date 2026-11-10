@@ -1,6 +1,6 @@
-package com.sutra.procurement.calculation;
+package com.sutra.api.comparison;
 
-import com.sutra.procurement.entity.enums.QuotationStatus;
+import com.sutra.api.enums.QuotationStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;

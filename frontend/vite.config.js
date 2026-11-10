@@ -6,8 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     // The Spring Boot API runs on 8080; proxying keeps the browser on one origin in development.
+    // xfwd adds X-Forwarded-For, so the gateway sees each user's own address (its sign-in rate limit is per address).
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': { target: process.env.SUTRA_API_URL || 'http://localhost:8080', xfwd: true },
     },
   },
   test: {

@@ -1,14 +1,14 @@
 package com.sutra.auth.controller;
 
-import com.sutra.auth.request.AuthRequests.ChangePasswordRequest;
-import com.sutra.auth.request.AuthRequests.LoginRequest;
-import com.sutra.auth.request.AuthRequests.VendorSignupRequest;
-import com.sutra.auth.response.UserResponses.SignupAccepted;
+import com.sutra.auth.dto.request.AuthRequests.ChangePasswordRequest;
+import com.sutra.auth.dto.request.AuthRequests.LoginRequest;
+import com.sutra.auth.dto.request.AuthRequests.VendorSignupRequest;
+import com.sutra.auth.dto.response.UserResponses.SignupAccepted;
 import com.sutra.auth.service.VendorSignupService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import com.sutra.auth.response.UserResponses.AuthResponse;
-import com.sutra.auth.response.UserResponses.UserResponse;
+import com.sutra.auth.dto.response.UserResponses.AuthResponse;
+import com.sutra.auth.dto.response.UserResponses.UserResponse;
 import com.sutra.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

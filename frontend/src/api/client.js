@@ -52,7 +52,7 @@ export function errorMessage(error) {
   }
   if (data?.message) {
     // Server-side failures carry a reference that support can find in the backend log
-    return error.response.status >= 500 && data.requestId ? `${data.message} (reference ${data.requestId})` : data.message;
+    return error.response.status >= 500 && data.correlationId ? `${data.message} (reference ${data.correlationId})` : data.message;
   }
   if (error?.response?.status === 413) return 'The file is too large.';
   if (error?.code === 'ERR_NETWORK') return 'Cannot reach the server. Is the backend running?';

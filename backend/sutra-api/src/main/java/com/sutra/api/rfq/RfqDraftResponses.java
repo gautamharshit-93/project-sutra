@@ -1,4 +1,4 @@
-package com.sutra.procurement.response;
+package com.sutra.api.rfq;
 
 import java.math.BigDecimal;
 import java.util.List;

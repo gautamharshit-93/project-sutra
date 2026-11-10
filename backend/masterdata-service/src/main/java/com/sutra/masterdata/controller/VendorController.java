@@ -1,7 +1,7 @@
 package com.sutra.masterdata.controller;
 
-import com.sutra.masterdata.request.MasterDataRequests.VendorRequest;
-import com.sutra.masterdata.response.MasterDataResponses.VendorResponse;
+import com.sutra.masterdata.dto.request.MasterDataRequests.VendorRequest;
+import com.sutra.masterdata.dto.response.MasterDataResponses.VendorResponse;
 import com.sutra.common.web.PageResponse;
 import com.sutra.masterdata.service.VendorService;
 import jakarta.validation.Valid;

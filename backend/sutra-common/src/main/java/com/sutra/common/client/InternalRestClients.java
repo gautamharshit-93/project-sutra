@@ -1,7 +1,7 @@
 package com.sutra.common.client;
 
 import com.sutra.common.security.JwtCodec;
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.Instant;
@@ -40,9 +40,9 @@ public class InternalRestClients {
                 .requestFactory(factory)
                 .requestInterceptor((request, body, execution) -> {
                     request.getHeaders().set(HttpHeaders.AUTHORIZATION, "Bearer " + serviceToken());
-                    String requestId = RequestIdFilter.current();
-                    if (requestId != null) {
-                        request.getHeaders().set(RequestIdFilter.HEADER, requestId);
+                    String correlationId = CorrelationIdFilter.current();
+                    if (correlationId != null) {
+                        request.getHeaders().set(CorrelationIdFilter.HEADER, correlationId);
                     }
                     return execution.execute(request, body);
                 })

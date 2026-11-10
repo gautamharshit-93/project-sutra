@@ -1,5 +1,6 @@
 package com.sutra.masterdata.entity;
 
+import com.sutra.masterdata.entity.base.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;

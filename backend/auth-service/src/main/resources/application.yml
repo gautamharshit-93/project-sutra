@@ -27,8 +27,8 @@ spring:
     enabled: true
     schemas: auth
     default-schema: auth
-    # The SQL in /database/auth is the single source of truth for this service's schema.
-    locations: ${AUTH_MIGRATIONS:filesystem:../../database/auth}
+    # Migrations live with the service: src/main/resources/db/migration (V1 domain tables, then changes).
+    locations: ${AUTH_MIGRATIONS:classpath:db/migration}
     # Foreign keys into other services' schemas (same database); off where a schema is tested alone.
     placeholders:
       crossSchemaFks: ${CROSS_SCHEMA_FKS:true}
@@ -49,7 +49,9 @@ sutra:
     lockout-minutes: ${SUTRA_LOCKOUT_MINUTES:15}
   services:
     masterdata: ${MASTERDATA_URL:http://localhost:8082}
-    procurement: ${PROCUREMENT_URL:http://localhost:8083}
+    rfq: ${RFQ_URL:http://localhost:8083}
+    quotation: ${QUOTATION_URL:http://localhost:8085}
+    approval: ${APPROVAL_URL:http://localhost:8089}
     audit: ${AUDIT_URL:http://localhost:8084}
 
 management:
@@ -64,7 +66,7 @@ springdoc:
 
 logging:
   pattern:
-    correlation: "[%X{requestId:-}] "
+    correlation: "[%X{correlationId:-}] "
   level:
     root: INFO
     "[com.sutra]": INFO

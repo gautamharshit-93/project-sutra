@@ -1,6 +1,6 @@
 package com.sutra.common.error;
 
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
@@ -74,6 +74,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message, req, null);
     }
 
+    /** No file attached / not a file upload, or a body in a format the endpoint does not take. */
+    @ExceptionHandler({org.springframework.web.multipart.MultipartException.class,
+            org.springframework.web.HttpMediaTypeNotSupportedException.class})
+    public ResponseEntity<ApiError> handleNotMultipart(Exception ex, HttpServletRequest req) {
+        if (ex instanceof MaxUploadSizeExceededException tooLarge) {
+            return handleTooLarge(tooLarge, req);
+        }
+        return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex instanceof org.springframework.web.HttpMediaTypeNotSupportedException
+                ? "This endpoint expects a different kind of request (for example a file upload)"
+                : "Attach at least one file", req, null);
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTooLarge(MaxUploadSizeExceededException ex, HttpServletRequest req) {
         return build(HttpStatus.CONTENT_TOO_LARGE, "FILE_TOO_LARGE",
@@ -123,7 +135,7 @@ public class GlobalExceptionHandler {
                                            HttpServletRequest req, List<ApiError.FieldError> fieldErrors) {
         ApiError body = new ApiError(Instant.now(), status.value(), status.getReasonPhrase(), code, message,
                 req.getRequestURI(), fieldErrors == null || fieldErrors.isEmpty() ? null : fieldErrors,
-                RequestIdFilter.current());
+                CorrelationIdFilter.current());
         return ResponseEntity.status(status).body(body);
     }
 }

@@ -12,7 +12,10 @@ backend/    Java 17, Spring Boot 4.1 microservices              gateway http://l
 database/   PostgreSQL 18: one schema per service (Flyway migrations) + setup scripts
 ai/         Python 3.12 FastAPI document service                http://localhost:8000
             test-data/  test packs, scripts/  acceptance test
-docs/       ARCHITECTURE.md (diagrams, ER model), SPEC_COMPLIANCE.md, ACCEPTANCE_RESULTS.md
+docs/       ARCHITECTURE.md (diagrams, ER model), SPEC_COMPLIANCE.md, ACCEPTANCE_RESULTS.md,
+            SUTRA_PROJECT_GUIDE.md (full project explanation and viva guide),
+            SUTRA_ARCHITECTURE_DIAGRAMS.md + diagrams/ (six Mermaid diagrams: architecture, entities, workflow,
+            request flow, comparison, status lifecycles)
 start-all.ps1 / stop-all.ps1   start or stop every service
 ```
 
@@ -124,7 +127,7 @@ cd ai;       .\.venv\Scripts\python -m pytest       # file-to-text parsers, matc
 cd frontend; npm test                               # Vitest + React Testing Library
 ```
 
-243 backend tests, 38 Python tests, 54 frontend tests, and 74 end-to-end acceptance checks. Service tests mock the
+246 backend tests, 38 Python tests, 54 frontend tests, and 75 end-to-end acceptance checks. Service tests mock the
 repositories, the other services and Groq, so business logic is tested without a database or network. The
 procurement integration tests use the `sutra_test` database (the procurement schema is wiped and rebuilt on each
 run); `DocumentServiceContractIntegrationTest` uses the real Python service and skips itself when it is not running;

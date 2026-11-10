@@ -12,6 +12,7 @@ python-docx from the ai venv to build an unreadable test file.
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -27,6 +28,7 @@ DATA = ROOT / "ai" / "test-data"
 BASE = os.environ.get("SUTRA_ACCEPTANCE_URL", "http://localhost:9080")
 RUN = datetime.now().strftime("%H%M%S")
 PASSWORD = "Accept@1234"
+PSQL = os.environ.get("PSQL", "C:/Program Files/PostgreSQL/18/bin/psql.exe")
 
 ITEMS = [
     ("MT-101", "Cold-rolled steel sheet (CRCA), 1.2 mm", 12, "Tonne"),
@@ -205,13 +207,22 @@ def main():
     check("Vendor sees the open RFQ in the portal", any(r["id"] == pr["id"] for r in seen))
     vb = vendors["SHAKTI"].call("GET", "/vendor-portal/badges")
     check("Vendor's menu badge counts open RFQs it has not quoted on", vb["openToQuote"] >= 1, vb)
-    yesterday = (datetime.now().date().toordinal() - 1)
+    yesterday = datetime.fromordinal(datetime.now().date().toordinal() - 1).date().isoformat()
+    status, body = buyer.try_call("POST", "/purchase-requests/with-items", {
+        "request": {"title": f"Backdated RFQ {RUN}", "entityId": entity["id"], "currency": "INR", "quotationsDue": yesterday},
+        "items": [{"description": "Brake disc", "quantity": 10, "unitOfMeasure": "Nos"}], "open": True})
+    check("A quotations-due date in the past is refused", status == 422 and body.get("code") == "DUE_DATE_IN_PAST",
+          f"HTTP {status}")
     late = buyer.call("POST", "/purchase-requests/with-items", {
         "request": {"title": f"Past-due RFQ {RUN}", "entityId": entity["id"], "currency": "INR",
-                    "quotationsDue": datetime.fromordinal(yesterday).date().isoformat()},
+                    "quotationsDue": datetime.now().date().isoformat()},
         "items": [{"description": "Brake disc", "quantity": 10, "unitOfMeasure": "Nos"}], "open": True})
     check("Buyer creates and opens an RFQ with its items in one step", late["status"] == "OPEN" and len(late["items"]) == 1,
           late["requestNumber"])
+    # Let a day pass: move the due date back directly in the (test) database
+    subprocess.run([PSQL, "-U", "sutra", "-h", "localhost", "-d", "sutra_test", "-q", "-c",
+                    f"UPDATE rfq.purchase_request SET quotations_due = DATE '{yesterday}' WHERE id = {late['id']}"],
+                   env={**os.environ, "PGPASSWORD": "sutra_pass"}, check=True)
     status, body = vendors["SHAKTI"].try_upload(f"/vendor-portal/rfqs/{late['id']}/quotations",
                                                 [DATA / "Vendor_1_Shakti_Metals_Quotation.pdf"])
     check("After the quotation due date the vendor portal refuses new quotations",

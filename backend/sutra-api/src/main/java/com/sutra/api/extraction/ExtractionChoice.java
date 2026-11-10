@@ -1,4 +1,6 @@
-package com.sutra.procurement.ai;
+package com.sutra.api.extraction;
+
+import com.sutra.api.enums.ExtractionEngine;
 
 /**
  * What a user asked for when uploading or re-running a quotation: the engine (AUTO by default) and, optionally,

@@ -1,5 +1,6 @@
-package com.sutra.auth.service;
+package com.sutra.auth.service.impl;
 
+import com.sutra.auth.service.impl.AuthServiceImpl;
 import com.sutra.common.audit.AuditService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,10 +15,10 @@ import com.sutra.auth.entity.AppUser;
 import com.sutra.common.security.RoleName;
 import com.sutra.auth.exception.AccountLockedException;
 import com.sutra.auth.repository.AppUserRepository;
-import com.sutra.auth.request.AuthRequests.LoginRequest;
+import com.sutra.auth.dto.request.AuthRequests.LoginRequest;
 import com.sutra.common.security.CurrentUserProvider;
 import com.sutra.common.security.JwtCodec;
-import com.sutra.auth.security.LoginAttemptService;
+import com.sutra.auth.service.internal.LoginAttemptService;
 import com.sutra.common.security.SutraUserPrincipal;
 import com.sutra.auth.support.Fixtures;
 import java.time.Instant;
@@ -33,7 +34,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+class AuthServiceImplTest {
 
     @Mock AuthenticationManager authenticationManager;
     @Mock JwtCodec jwt;
@@ -42,7 +43,7 @@ class AuthServiceTest {
     @Mock CurrentUserProvider currentUser;
     @Mock AuditService auditService;
     @Mock LoginAttemptService loginAttempts;
-    @InjectMocks AuthService service;
+    @InjectMocks AuthServiceImpl service;
 
     @Test
     void successfulLoginIssuesATokenAndResetsFailures() {

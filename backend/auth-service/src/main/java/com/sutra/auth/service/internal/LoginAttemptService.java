@@ -1,4 +1,4 @@
-package com.sutra.auth.security;
+package com.sutra.auth.service.internal;
 
 import com.sutra.auth.config.AuthProperties;
 import com.sutra.auth.exception.AccountLockedException;

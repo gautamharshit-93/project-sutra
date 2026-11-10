@@ -1,7 +1,7 @@
 package com.sutra.common.security;
 
 import com.sutra.common.error.ApiError;
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
@@ -65,6 +65,6 @@ public class CommonSecurityConfig {
         res.setStatus(status);
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         mapper.writeValue(res.getOutputStream(), new ApiError(Instant.now(), status, error, code, message, path, null,
-                RequestIdFilter.current()));
+                CorrelationIdFilter.current()));
     }
 }

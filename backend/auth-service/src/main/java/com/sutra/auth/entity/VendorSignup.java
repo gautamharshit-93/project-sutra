@@ -1,5 +1,6 @@
 package com.sutra.auth.entity;
 
+import com.sutra.auth.entity.base.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

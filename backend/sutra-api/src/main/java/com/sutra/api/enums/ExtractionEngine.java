@@ -1,6 +1,6 @@
-package com.sutra.procurement.ai;
+package com.sutra.api.enums;
 
-import com.sutra.procurement.entity.enums.ExtractionSource;
+import com.sutra.api.enums.ExtractionSource;
 
 /**
  * The extraction engine a user asks for when uploading or retrying a quotation. AUTO tries the engines in the

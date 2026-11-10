@@ -2,7 +2,7 @@ package com.sutra.gateway;
 
 import com.sutra.common.security.JwtCodec;
 import com.sutra.common.security.SecurityProperties;
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Import;
  */
 @SpringBootApplication
 @EnableConfigurationProperties({GatewayProperties.class, SecurityProperties.class})
-@Import(RequestIdFilter.class)
+@Import(CorrelationIdFilter.class)
 public class GatewayApplication {
 
     public static void main(String[] args) {

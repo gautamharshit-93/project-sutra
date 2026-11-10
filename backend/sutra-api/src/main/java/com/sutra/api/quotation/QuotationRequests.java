@@ -1,6 +1,6 @@
-package com.sutra.procurement.request;
+package com.sutra.api.quotation;
 
-import com.sutra.procurement.entity.enums.ApprovalDecision;
+import com.sutra.api.enums.ApprovalDecision;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

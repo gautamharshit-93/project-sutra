@@ -1,4 +1,4 @@
-package com.sutra.procurement.calculation;
+package com.sutra.api.comparison;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,7 +40,7 @@ public record GradeReport(int score, String grade, List<GradeRule> rules) {
     }
 
     /** A rule worth {@code max} points, earning {@code fraction} (0..1) of them. */
-    static GradeRule rule(String code, String label, int max, double fraction, String detail) {
+    public static GradeRule rule(String code, String label, int max, double fraction, String detail) {
         double clamped = Double.isNaN(fraction) ? 0 : Math.max(0, Math.min(1, fraction));
         BigDecimal points = BigDecimal.valueOf(max * clamped).setScale(1, RoundingMode.HALF_UP);
         return new GradeRule(code, label, points, max, detail);

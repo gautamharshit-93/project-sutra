@@ -1,0 +1,10 @@
+# Unit tests mock every collaborator; integration tests (if any) use the sutra_test database in their own schema.
+spring:
+  main:
+    banner-mode: off
+sutra:
+  audit:
+    outbox-relay: false
+logging:
+  level:
+    "[com.sutra]": WARN

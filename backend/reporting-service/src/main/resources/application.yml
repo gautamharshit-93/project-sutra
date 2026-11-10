@@ -1,0 +1,41 @@
+server:
+  port: ${REPORTING_PORT:8090}
+
+spring:
+  application:
+    name: reporting-service
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+  audit:
+    outbox-relay: false   # this service stores nothing, so it records no audit events
+  services:
+    masterdata: ${MASTERDATA_URL:http://localhost:8082}
+    rfq: ${RFQ_URL:http://localhost:8083}
+    quotation: ${QUOTATION_URL:http://localhost:8085}
+    extraction: ${EXTRACTION_URL:http://localhost:8087}
+    comparison: ${COMPARISON_URL:http://localhost:8088}
+    approval: ${APPROVAL_URL:http://localhost:8089}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

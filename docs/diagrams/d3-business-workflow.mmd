@@ -1,0 +1,110 @@
+%% D3 · COMPLETE BUSINESS WORKFLOW (setup -> RFQ -> quotations -> comparison -> award -> audit)
+%% Black = a person acts. Red = the system acts. Dashed = a decision. Grey = data written.
+flowchart TB
+
+  START(["START"])
+
+  %% ---------- PHASE 1: SETUP ----------
+  subgraph P1["PHASE 1 · ACCESS AND SETUP"]
+    direction TB
+    S1["Admin signs in<br/>must change start-up password"]
+    S2["Admin creates buyer and manager logins"]
+    S3["Vendor registers at /register<br/>login inactive"]
+    S4["Admin clicks Approve<br/>vendor created, login active"]
+    S5["Buyer creates entity<br/>+ sub-entity, customer (optional)"]
+  end
+
+  %% ---------- PHASE 2: RFQ ----------
+  subgraph P2["PHASE 2 · PURCHASE REQUEST (RFQ)"]
+    direction TB
+    R1["Buyer drops RFQ document<br/>or pastes text, or types it"]
+    R2["Groq reads it into a DRAFT<br/>nothing saved yet"]
+    R3["Buyer checks items, picks entity<br/>sets quotations due date"]
+    R4["Create RFQ: header + items<br/>one transaction, PR-2026-00001"]
+    R5{{"Open to vendors now?"}}
+    R6["RFQ status OPEN"]
+    R7["RFQ status DRAFT<br/>open later"]
+  end
+
+  %% ---------- PHASE 3: QUOTATIONS ----------
+  subgraph P3["PHASE 3 · VENDOR QUOTATIONS"]
+    direction TB
+    V1["Vendor sees open RFQ<br/>menu badge"]
+    V2{{"RFQ open, before due date,<br/>no quotation yet?"}}
+    V3["Vendor uploads PDF / Excel / Word / scan"]
+    V4["Files checked by content<br/>type, size 20 MB, duplicates"]
+    V5[("Stored as BYTEA<br/>quotation UPLOADED")]
+    VX["Refused with a clear message"]
+  end
+
+  %% ---------- PHASE 4: AUTOMATIC READING ----------
+  subgraph P4["PHASE 4 · AUTOMATIC READING (background, after commit)"]
+    direction TB
+    E1["File to text<br/>Python, or Tesseract OCR for scans"]
+    E2["Groq reads text into strict JSON<br/>rule-based reader as backup"]
+    E3["Match lines to requested items<br/>item code first, then description"]
+    E4["Java recalculates every line and total<br/>raises flags"]
+    E5{{"Any line without<br/>quantity or price?"}}
+    E6["READY FOR COMPARISON"]
+    E7["NEEDS REVIEW"]
+    E8["FAILED, file kept<br/>reason shown"]
+    E9["Buyer corrects lines, resolves warnings<br/>or clicks Read again"]
+  end
+
+  %% ---------- PHASE 5: COMPARISON AND AWARD ----------
+  subgraph P5["PHASE 5 · COMPARISON AND DECISION"]
+    direction TB
+    C1["Buyer clicks Compare now"]
+    C2["Comparison report version N<br/>rank complete quotations, advisory grade"]
+    C3["RFQ UNDER REVIEW<br/>closed to vendors"]
+    C4{{"Manager: award or reject?"}}
+    C5{{"Awarding the lowest<br/>complete quotation?"}}
+    C6["Reason required"]
+    C7["RFQ APPROVED<br/>award summary PDF<br/>vendors see Awarded / Not awarded"]
+    C8["RFQ REJECTED<br/>with reason"]
+  end
+
+  AUDITLOG[("AUDIT LOG<br/>every step: who, what, when")]
+  FINISH(["END"])
+
+  %% ---------- FLOW ----------
+  START --> S1 --> S2
+  S1 --> S4
+  S3 --> S4
+  S2 --> S5 --> R1 --> R2 --> R3 --> R4 --> R5
+  R5 -->|"yes"| R6
+  R5 -->|"no"| R7 -.->|"buyer opens"| R6
+  R6 --> V1 --> V2
+  V2 -->|"no"| VX
+  V2 -->|"yes"| V3 --> V4 --> V5 --> E1 --> E2 --> E3 --> E4 --> E5
+  E2 -.->|"nothing readable"| E8
+  E5 -->|"no"| E6
+  E5 -->|"yes"| E7
+  E7 --> E9
+  E8 --> E9
+  E9 -->|"recalculated"| E5
+  E6 --> C1 --> C2 --> C3 --> C4
+  C4 -->|"award"| C5
+  C4 -->|"reject"| C8
+  C5 -->|"yes"| C7
+  C5 -->|"no"| C6 --> C7
+  C7 --> FINISH
+  C8 --> FINISH
+
+  P1 -.-> AUDITLOG
+  P2 -.-> AUDITLOG
+  P3 -.-> AUDITLOG
+  P4 -.-> AUDITLOG
+  P5 -.-> AUDITLOG
+
+  %% ---------- STYLES ----------
+  classDef person fill:#000000,color:#ffffff,stroke:#000000
+  classDef system fill:#ff0000,color:#ffffff,stroke:#000000
+  classDef decision fill:#ffffff,color:#000000,stroke:#ff0000,stroke-width:2px,stroke-dasharray:5 3
+  classDef data fill:#eeeeee,color:#000000,stroke:#000000
+  classDef terminal fill:#ffffff,color:#000000,stroke:#000000,stroke-width:3px
+  class S1,S2,S3,S4,S5,R1,R3,V1,V3,E9,C1 person
+  class R2,R4,R6,R7,V4,E1,E2,E3,E4,E6,E7,E8,C2,C3,C7,C8,VX,C6 system
+  class R5,V2,E5,C4,C5 decision
+  class V5,AUDITLOG data
+  class START,FINISH terminal

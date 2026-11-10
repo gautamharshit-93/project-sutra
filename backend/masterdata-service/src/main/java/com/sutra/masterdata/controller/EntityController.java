@@ -1,9 +1,9 @@
 package com.sutra.masterdata.controller;
 
-import com.sutra.masterdata.request.MasterDataRequests.EntityRequest;
-import com.sutra.masterdata.request.MasterDataRequests.SubEntityRequest;
-import com.sutra.masterdata.response.MasterDataResponses.EntityResponse;
-import com.sutra.masterdata.response.MasterDataResponses.SubEntityResponse;
+import com.sutra.masterdata.dto.request.MasterDataRequests.EntityRequest;
+import com.sutra.masterdata.dto.request.MasterDataRequests.SubEntityRequest;
+import com.sutra.masterdata.dto.response.MasterDataResponses.EntityResponse;
+import com.sutra.masterdata.dto.response.MasterDataResponses.SubEntityResponse;
 import com.sutra.common.web.PageResponse;
 import com.sutra.masterdata.service.BusinessEntityService;
 import jakarta.validation.Valid;

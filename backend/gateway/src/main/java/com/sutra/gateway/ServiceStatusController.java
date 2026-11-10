@@ -1,7 +1,7 @@
 package com.sutra.gateway;
 
 import com.sutra.common.error.ApiError;
-import com.sutra.common.web.RequestIdFilter;
+import com.sutra.common.web.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -41,7 +41,7 @@ public class ServiceStatusController {
     public ResponseEntity<?> services(HttpServletRequest request) {
         if (request.getHeader(HttpHeaders.AUTHORIZATION) == null) {
             return ResponseEntity.status(401).body(new ApiError(Instant.now(), 401, "Unauthorized", "UNAUTHENTICATED",
-                    "Authentication is required", request.getRequestURI(), null, RequestIdFilter.current()));
+                    "Authentication is required", request.getRequestURI(), null, CorrelationIdFilter.current()));
         }
         Map<String, String> targets = new LinkedHashMap<>();
         targets.put("gateway", null);

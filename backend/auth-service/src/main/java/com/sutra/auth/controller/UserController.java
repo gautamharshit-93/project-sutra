@@ -1,10 +1,10 @@
 package com.sutra.auth.controller;
 
-import com.sutra.auth.request.UserRequest;
+import com.sutra.auth.dto.request.UserRequest;
 import com.sutra.common.web.PageResponse;
-import com.sutra.auth.response.UserResponses.RoleResponse;
-import com.sutra.auth.response.UserResponses.UserResponse;
-import com.sutra.auth.response.UserResponses.VendorSignupResponse;
+import com.sutra.auth.dto.response.UserResponses.RoleResponse;
+import com.sutra.auth.dto.response.UserResponses.UserResponse;
+import com.sutra.auth.dto.response.UserResponses.VendorSignupResponse;
 import com.sutra.auth.service.UserService;
 import com.sutra.auth.service.VendorSignupService;
 import jakarta.validation.Valid;

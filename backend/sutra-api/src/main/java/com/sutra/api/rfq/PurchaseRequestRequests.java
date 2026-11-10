@@ -1,6 +1,6 @@
-package com.sutra.procurement.request;
+package com.sutra.api.rfq;
 
-import com.sutra.procurement.entity.enums.PurchaseRequestStatus;
+import com.sutra.api.enums.PurchaseRequestStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

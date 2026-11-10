@@ -82,14 +82,17 @@ class GatewayFilterTest {
     void routesAreMatchedInOrderSoHistoryGoesToTheAuditService() {
         var props = new GatewayProperties(List.of(
                 new GatewayProperties.Route("audit service", "http://audit", List.of("/api/purchase-requests/*/history")),
-                new GatewayProperties.Route("procurement service", "http://proc", List.of("/api/purchase-requests/**"))),
+                new GatewayProperties.Route("quotation service", "http://quotation", List.of("/api/purchase-requests/*/quotations")),
+                new GatewayProperties.Route("RFQ service", "http://rfq", List.of("/api/purchase-requests/**"))),
                 List.of(), "http://auth", 15, 600);
         RouteTable routes = new RouteTable(props);
 
         assertThat(routes.find("/api/purchase-requests/12/history")).get()
                 .extracting(GatewayProperties.Route::service).isEqualTo("audit service");
         assertThat(routes.find("/api/purchase-requests/12/quotations")).get()
-                .extracting(GatewayProperties.Route::service).isEqualTo("procurement service");
+                .extracting(GatewayProperties.Route::service).isEqualTo("quotation service");
+        assertThat(routes.find("/api/purchase-requests/12")).get()
+                .extracting(GatewayProperties.Route::service).isEqualTo("RFQ service");
         assertThat(routes.find("/api/unknown")).isEmpty();
     }
 }

@@ -1,4 +1,4 @@
-package com.sutra.auth.entity;
+package com.sutra.auth.entity.base;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;

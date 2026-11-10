@@ -84,7 +84,8 @@ export default function PurchaseRequestForm({ request, onClose, onSaved }) {
           <input value={values.currency} maxLength={3} onChange={set('currency')} />
         </Field>
         <Field label="Quotations due by" error={errors.quotationsDue} hint="Vendors can send quotations until this day">
-          <input type="date" value={values.quotationsDue} onChange={set('quotationsDue')} />
+          <input type="date" value={values.quotationsDue} min={new Date().toLocaleDateString('en-CA')}
+                 max={values.requiredBy || undefined} onChange={set('quotationsDue')} />
         </Field>
         <Field label="Goods required by" error={errors.requiredBy}>
           <input type="date" value={values.requiredBy} onChange={set('requiredBy')} />

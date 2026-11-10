@@ -1,5 +1,6 @@
-package com.sutra.auth.service;
+package com.sutra.auth.service.impl;
 
+import com.sutra.auth.service.AuthService;
 import com.sutra.common.audit.AuditService;
 
 import static com.sutra.common.audit.AuditService.details;
@@ -8,13 +9,13 @@ import com.sutra.auth.entity.AppUser;
 import com.sutra.auth.exception.AccountLockedException;
 import com.sutra.common.error.BusinessRuleException;
 import com.sutra.auth.repository.AppUserRepository;
-import com.sutra.auth.request.AuthRequests.ChangePasswordRequest;
-import com.sutra.auth.request.AuthRequests.LoginRequest;
-import com.sutra.auth.response.UserResponses.AuthResponse;
-import com.sutra.auth.response.UserResponses.UserResponse;
+import com.sutra.auth.dto.request.AuthRequests.ChangePasswordRequest;
+import com.sutra.auth.dto.request.AuthRequests.LoginRequest;
+import com.sutra.auth.dto.response.UserResponses.AuthResponse;
+import com.sutra.auth.dto.response.UserResponses.UserResponse;
 import com.sutra.common.security.CurrentUserProvider;
 import com.sutra.common.security.JwtCodec;
-import com.sutra.auth.security.LoginAttemptService;
+import com.sutra.auth.service.internal.LoginAttemptService;
 import com.sutra.common.security.SutraUserPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AuthService {
+public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
@@ -39,7 +40,7 @@ public class AuthService {
     private final AuditService auditService;
     private final LoginAttemptService loginAttempts;
 
-    public AuthService(AuthenticationManager authenticationManager, JwtCodec jwt,
+    public AuthServiceImpl(AuthenticationManager authenticationManager, JwtCodec jwt,
                        AppUserRepository userRepository, PasswordEncoder passwordEncoder,
                        CurrentUserProvider currentUser, AuditService auditService,
                        LoginAttemptService loginAttempts) {
@@ -54,6 +55,7 @@ public class AuthService {
 
     /** Failed and blocked attempts are audited too, so the audit entry must survive the exception. */
     @Transactional(noRollbackFor = {AuthenticationException.class, AccountLockedException.class})
+    @Override
     public AuthResponse login(LoginRequest request) {
         String username = request.username().trim();
         try {
@@ -90,11 +92,13 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
+    @Override
     public UserResponse me() {
         return UserResponse.from(userRepository.findById(currentUser.requirePrincipal().getId()).orElseThrow());
     }
 
     @Transactional
+    @Override
     public void changePassword(ChangePasswordRequest request) {
         AppUser user = userRepository.findById(currentUser.requirePrincipal().getId()).orElseThrow();
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {

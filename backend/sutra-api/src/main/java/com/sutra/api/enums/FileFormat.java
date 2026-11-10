@@ -1,4 +1,4 @@
-package com.sutra.procurement.entity.enums;
+package com.sutra.api.enums;
 
 import java.util.Arrays;
 import java.util.Locale;

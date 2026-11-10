@@ -1,0 +1,59 @@
+server:
+  port: ${COMPARISON_PORT:8088}
+
+spring:
+  application:
+    name: comparison-service
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sutra_db}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+    hikari:
+      schema: comparison
+      maximum-pool-size: 5
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+      "[hibernate.default_schema]": comparison
+  flyway:
+    enabled: true
+    schemas: comparison
+    default-schema: comparison
+    # Migrations live with the service: src/main/resources/db/migration
+    locations: ${COMPARISON_MIGRATIONS:classpath:db/migration}
+    # Foreign keys into other services' schemas (same database); off where a schema is tested alone.
+    placeholders:
+      crossSchemaFks: ${CROSS_SCHEMA_FKS:true}
+
+sutra:
+  security:
+    # Shared by every service. Override JWT_SECRET in any shared environment (min 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-sutra-dev-secret-key-at-least-32-chars}
+  services:
+    rfq: ${RFQ_URL:http://localhost:8083}
+    quotation: ${QUOTATION_URL:http://localhost:8085}
+    audit: ${AUDIT_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "
+  level:
+    root: INFO
+    "[com.sutra]": INFO

@@ -1,4 +1,4 @@
-package com.sutra.procurement.calculation;
+package com.sutra.api.rules;
 
 import java.util.Set;
 

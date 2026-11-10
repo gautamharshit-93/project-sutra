@@ -9,9 +9,10 @@ import com.sutra.auth.entity.AppUser;
 import com.sutra.auth.entity.Role;
 import com.sutra.auth.repository.AppUserRepository;
 import com.sutra.auth.repository.RoleRepository;
-import com.sutra.auth.request.AuthRequests.ChangePasswordRequest;
-import com.sutra.auth.security.LoginAttemptService;
+import com.sutra.auth.dto.request.AuthRequests.ChangePasswordRequest;
+import com.sutra.auth.service.internal.LoginAttemptService;
 import com.sutra.auth.service.AuthService;
+import com.sutra.auth.service.impl.AuthServiceImpl;
 import com.sutra.auth.support.Fixtures;
 import com.sutra.common.audit.AuditService;
 import com.sutra.common.security.CurrentUserProvider;
@@ -80,7 +81,7 @@ class StartupPasswordTest {
         CurrentUserProvider currentUser = mock(CurrentUserProvider.class);
         when(currentUser.requirePrincipal()).thenReturn(admin.toPrincipal());
         when(users.findById(admin.getId())).thenReturn(Optional.of(admin));
-        AuthService auth = new AuthService(mock(AuthenticationManager.class), mock(JwtCodec.class), users, encoder,
+        AuthService auth = new AuthServiceImpl(mock(AuthenticationManager.class), mock(JwtCodec.class), users, encoder,
                 currentUser, mock(AuditService.class), mock(LoginAttemptService.class));
 
         auth.changePassword(new ChangePasswordRequest("Admin@123", "Chosen#Pass42"));

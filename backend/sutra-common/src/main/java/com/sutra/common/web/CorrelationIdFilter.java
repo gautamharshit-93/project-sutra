@@ -4,36 +4,41 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.UUID;
-import java.util.regex.Pattern;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
 /**
- * Gives every request a correlation id: taken from a well-formed {@code X-Request-Id} header or generated. It is
- * returned in the response header, written to every log line ({@code %X{requestId}}) and included in error bodies,
- * so a user-reported error can be found in the server log.
+ * Gives every request a correlation id: taken from a well-formed {@code X-Correlation-Id} header (the gateway sets
+ * one on every request; the older {@code X-Request-Id} is still accepted) or generated. It is echoed in the
+ * response, written to every log line ({@code %X{correlationId}}), carried on calls to other services, stored on
+ * audit events and included in error bodies, so one user action can be followed through every service.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class RequestIdFilter extends OncePerRequestFilter {
+public class CorrelationIdFilter extends OncePerRequestFilter {
 
-    public static final String HEADER = "X-Request-Id";
-    public static final String MDC_KEY = "requestId";
-    private static final Pattern VALID = Pattern.compile("[A-Za-z0-9._-]{8,64}");
+    public static final String HEADER = "X-Correlation-Id";
+    public static final String LEGACY_HEADER = "X-Request-Id";
+    public static final String MDC_KEY = "correlationId";
+    private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9._-]{8,64}");
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String incoming = request.getHeader(HEADER);
-        String requestId = incoming != null && VALID.matcher(incoming).matches()
-                ? incoming : UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        MDC.put(MDC_KEY, requestId);
-        response.setHeader(HEADER, requestId);
+        if (incoming == null) {
+            incoming = request.getHeader(LEGACY_HEADER);
+        }
+        String correlationId = incoming != null && SAFE_ID.matcher(incoming).matches() ? incoming : newId();
+        MDC.put(MDC_KEY, correlationId);
+        response.setHeader(HEADER, correlationId);
         try {
             chain.doFilter(request, response);
         } finally {
@@ -41,8 +46,18 @@ public class RequestIdFilter extends OncePerRequestFilter {
         }
     }
 
-    /** The current request's id, or null outside a request (e.g. background extraction). */
+    /** The current request's correlation id, or null outside a request (e.g. background extraction). */
     public static String current() {
         return MDC.get(MDC_KEY);
+    }
+
+    /** The current correlation id, or a new one for work that did not start from a request. */
+    public static String currentOrNew() {
+        String id = current();
+        return id != null ? id : newId();
+    }
+
+    private static String newId() {
+        return UUID.randomUUID().toString();
     }
 }

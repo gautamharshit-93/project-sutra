@@ -52,8 +52,11 @@ public class AuditOutboxEvent {
     @Column(columnDefinition = "jsonb")
     private String details;
 
+    @Column(name = "correlation_id", length = 64)
+    private String correlationId;
+
     AuditEventMessage toMessage(String service) {
         return new AuditEventMessage(eventId, service, entityType, entityId, purchaseRequestId, action, performedBy,
-                performedAt, details);
+                performedAt, details, correlationId);
     }
 }

@@ -1,5 +1,6 @@
-package com.sutra.auth.service;
+package com.sutra.auth.service.impl;
 
+import com.sutra.auth.service.impl.VendorSignupServiceImpl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,7 +16,7 @@ import com.sutra.auth.entity.VendorSignup;
 import com.sutra.auth.repository.AppUserRepository;
 import com.sutra.auth.repository.RoleRepository;
 import com.sutra.auth.repository.VendorSignupRepository;
-import com.sutra.auth.request.AuthRequests.VendorSignupRequest;
+import com.sutra.auth.dto.request.AuthRequests.VendorSignupRequest;
 import com.sutra.auth.support.Fixtures;
 import com.sutra.common.audit.AuditService;
 import com.sutra.common.error.BusinessRuleException;
@@ -32,7 +33,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** Vendors sign up themselves; nothing is visible to them until an administrator approves with one click. */
 @ExtendWith(MockitoExtension.class)
-class VendorSignupServiceTest {
+class VendorSignupServiceImplTest {
 
     @Mock AppUserRepository userRepository;
     @Mock RoleRepository roleRepository;
@@ -40,7 +41,7 @@ class VendorSignupServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock MasterDataClient masterData;
     @Mock AuditService auditService;
-    @InjectMocks VendorSignupService service;
+    @InjectMocks VendorSignupServiceImpl service;
 
     private static VendorSignupRequest request() {
         return new VendorSignupRequest("Shakti Metals", "Ravi Kumar", "Sales@Shakti.example", "+91 98765 43210",

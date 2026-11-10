@@ -1,4 +1,4 @@
-package com.sutra.auth.security;
+package com.sutra.auth.service.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;

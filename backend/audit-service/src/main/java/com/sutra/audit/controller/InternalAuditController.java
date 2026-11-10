@@ -1,5 +1,6 @@
 package com.sutra.audit.controller;
 
+import com.sutra.audit.dto.response.IngestResult;
 import com.sutra.audit.service.AuditLogService;
 import com.sutra.common.audit.AuditEventMessage;
 import java.util.List;
@@ -12,9 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/internal/audit-events")
 public class InternalAuditController {
-
-    public record IngestResult(int received, int stored) {
-    }
 
     private final AuditLogService auditLogService;
 
