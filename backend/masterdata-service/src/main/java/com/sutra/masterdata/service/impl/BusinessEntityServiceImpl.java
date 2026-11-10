@@ -23,7 +23,6 @@ import com.sutra.masterdata.dto.response.MasterDataResponses.SubEntityResponse;
 import com.sutra.common.web.PageResponse;
 import com.sutra.common.util.Text;
 import java.util.List;
-import java.util.Locale;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;

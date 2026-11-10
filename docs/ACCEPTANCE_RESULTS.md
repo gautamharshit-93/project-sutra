@@ -1,7 +1,7 @@
 # SUTRA acceptance results
 
-Run 2026-11-09 18:18, against the acceptance copy of the microservice stack (http://localhost:9080, database sutra_test) with the automotive test pack in `ai/test-data/`.
-**75 of 75 checks passed** in 54 s. RFQ PR-2026-00003.
+Run 2026-11-10 22:56, against the acceptance copy of the microservice stack (http://localhost:9080, database sutra_test) with the automotive test pack in `ai/test-data/`.
+**75 of 75 checks passed** in 68 s. RFQ PR-2026-00006.
 
 Regenerate with `.\start-all.ps1 -Acceptance`, then `ai\.venv\Scripts\python scripts\acceptance_test.py`.
 
@@ -9,18 +9,18 @@ Regenerate with `.\start-all.ps1 -Acceptance`, then `ai\.venv\Scripts\python scr
 
 | Rank | Vendor | System grand total (INR) | Expected (ai/test-data/README.txt) | Grade | Missing information |
 |---|---|---|---|---|---|
-| 1 | Vertex Auto Materials (Demo) 181738 | 3,622,788.8 | 3,622,788.80 | A (91) | Warranty incomplete |
-| 2 | Shakti Metals & Components (Demo) 181738 | 3,702,250.0 | 3,702,250.00 | A (94) | none |
-| 3 | Pioneer Industrial Supplies (Demo) 181738 | 3,723,962.0 | 3,723,962.00 | A (92) | none |
+| 1 | Vertex Auto Materials (Demo) 225508 | 3,622,788.8 | 3,622,788.80 | A (91) | Warranty incomplete |
+| 2 | Shakti Metals & Components (Demo) 225508 | 3,702,250.0 | 3,702,250.00 | A (94) | none |
+| 3 | Pioneer Industrial Supplies (Demo) 225508 | 3,723,962.0 | 3,723,962.00 | A (92) | none |
 
-Award: **APPROVED** Vertex Auto Materials (Demo) 181738 by manager181738 (reason: Lowest complete quotation; bearing warranty to be fixed in the PO.).
+Award: **APPROVED** Vertex Auto Materials (Demo) 225508 by manager225508 (reason: Lowest complete quotation; bearing warranty to be fixed in the PO.).
 
 
 ## 1. CRUD for entities, sub-entities, customers and vendors, with valid relationships enforced
 
 | Result | Check | Detail |
 |---|---|---|
-| PASS | Create entity (the buying company) | AXM181738 |
+| PASS | Create entity (the buying company) | AXM225508 |
 | PASS | Create sub-entity linked to the entity |  |
 | PASS | Duplicate sub-entity code rejected | HTTP 409 |
 | PASS | Update entity |  |
@@ -45,12 +45,12 @@ Award: **APPROVED** Vertex Auto Materials (Demo) 181738 by manager181738 (reason
 
 | Result | Check | Detail |
 |---|---|---|
-| PASS | Buyer creates the RFQ with 5 items and opens it | PR-2026-00003 |
+| PASS | Buyer creates the RFQ with 5 items and opens it | PR-2026-00006 |
 | PASS | Vendor sees the open RFQ in the portal |  |
-| PASS | Vendor's menu badge counts open RFQs it has not quoted on | {'openToQuote': 1, 'decidedQuotationIds': []} |
+| PASS | Vendor's menu badge counts open RFQs it has not quoted on | {'openToQuote': 4, 'decidedQuotationIds': []} |
 | PASS | A quotations-due date in the past is refused | HTTP 422 |
-| PASS | Buyer creates and opens an RFQ with its items in one step | PR-2026-00005 |
-| PASS | After the quotation due date the vendor portal refuses new quotations | HTTP 422: Quotations for PR-2026-00005 were due by 2026-11-08; the buyer no longer accepts new ones |
+| PASS | Buyer creates and opens an RFQ with its items in one step | PR-2026-00008 |
+| PASS | After the quotation due date the vendor portal refuses new quotations | HTTP 422: Quotations for PR-2026-00008 were due by 2026-11-09; the buyer no longer accepts new ones |
 | PASS | Vendor cannot use the company API | HTTP 403 |
 | PASS | Vendor cannot list other vendors | HTTP 403 |
 | PASS | SHAKTI: vendor sends PDF + Excel as one quotation | Vendor_1_Shakti_Metals_Quotation.pdf (PDF, 3,776 B), Vendor_1_Shakti_Metals_Material_List.xlsx (XLSX, 7,101 B) |
@@ -114,14 +114,14 @@ Award: **APPROVED** Vertex Auto Materials (Demo) 181738 by manager181738 (reason
 | PASS | Buyer cannot award | HTTP 403 |
 | PASS | Vendor cannot award | HTTP 403 |
 | PASS | Awarding a vendor that is not the lowest needs a reason | HTTP 422 REASON_REQUIRED |
-| PASS | Manager awards the RFQ (who, when, reason recorded) | APPROVED Vertex Auto Materials (Demo) 181738 by manager181738 at 2026-11-09T12:48:11.549243600Z |
+| PASS | Manager awards the RFQ (who, when, reason recorded) | APPROVED Vertex Auto Materials (Demo) 225508 by manager225508 at 2026-11-10T17:25:55.623947800Z |
 | PASS | RFQ closed as awarded |  |
 | PASS | Award summary downloads as a PDF | HTTP 200, 2,485 bytes |
 | PASS | Vendors see the outcome (Vertex awarded, the others not) | {'SHAKTI': 'NOT_AWARDED', 'PIONEER': 'NOT_AWARDED', 'VERTEX': 'AWARDED'} |
 | PASS | Buyer cannot read the full audit log | HTTP 403 |
 | PASS | Manager can read the full audit log | HTTP 200 |
-| PASS | RFQ history shows every step | 26 entries; missing none |
+| PASS | RFQ history shows every step | 18 entries; missing none |
 | PASS | Extraction recorded as the system, uploads as each vendor, the award as the manager |  |
 | PASS | Account locked after 5 failed sign-ins | HTTP 429: Too many failed sign-in attempts. Try again in 15 minute(s) or ask an administrator. |
 | PASS | A deactivated user's open session stops working | HTTP 401 SESSION_EXPIRED |
-| PASS | All services report healthy | gateway, auth service, master data service, audit service, procurement service, document-service |
+| PASS | All services report healthy | gateway, auth service, master data service, audit service, extraction service, reporting service, comparison service, approval service, quotation service, RFQ service, document service, document-service |

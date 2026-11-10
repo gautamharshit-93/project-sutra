@@ -17,7 +17,6 @@ import com.sutra.rfq.entity.UserRef;
 import com.sutra.rfq.entity.PurchaseRequest;
 import com.sutra.rfq.entity.RequestItem;
 import com.sutra.api.enums.PurchaseRequestStatus;
-import com.sutra.api.enums.QuotationStatus;
 import com.sutra.common.error.BusinessRuleException;
 import com.sutra.rfq.exception.PurchaseRequestNotFoundException;
 import com.sutra.common.error.ResourceNotFoundException;
@@ -337,7 +336,7 @@ public class PurchaseRequestServiceImpl implements PurchaseRequestService {
         // an empty IN () is not valid SQL: -1 never matches
         Collection<Long> ids = quotedIds == null || quotedIds.isEmpty() ? List.of(-1L) : quotedIds;
         var pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
-                Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+                Sort.by(Sort.Direction.DESC, PurchaseRequest::getCreatedAt, PurchaseRequest::getId));
         return PageResponse.of(repository.visibleToVendor(ids, pageable), PurchaseRequestMapper::purchaseRequestResponse);
     }
 

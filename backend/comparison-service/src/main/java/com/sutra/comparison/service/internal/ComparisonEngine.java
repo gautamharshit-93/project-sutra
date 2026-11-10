@@ -2,7 +2,6 @@ package com.sutra.comparison.service.internal;
 
 import com.sutra.api.rfq.PurchaseRequestResponses.RequestItemResponse;
 import com.sutra.api.rfq.PurchaseRequestResponses.PurchaseRequestResponse;
-import com.sutra.api.quotation.QuotationResponses.QuotationFlagResponse;
 import com.sutra.api.quotation.QuotationResponses.QuotationItemResponse;
 import com.sutra.api.quotation.QuotationResponses.QuotationResponse;
 import com.sutra.api.comparison.ComparisonResult;

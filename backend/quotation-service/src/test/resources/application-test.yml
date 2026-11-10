@@ -1,10 +1,35 @@
-# Unit tests mock every collaborator; integration tests (if any) use the sutra_test database in their own schema.
+# Integration tests run against a real PostgreSQL database (sutra_test) in their own schema (quotation_it), wiped and
+# rebuilt from this service's migrations on each run. The other services are mocked (their clients).
 spring:
-  main:
-    banner-mode: off
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/sutra_test}
+    username: ${DB_USERNAME:sutra}
+    password: ${DB_PASSWORD:sutra_pass}
+    hikari:
+      schema: quotation_it
+  jpa:
+    properties:
+      "[hibernate.default_schema]": quotation_it
+  flyway:
+    schemas: quotation_it
+    default-schema: quotation_it
+    clean-disabled: false
+    placeholders:
+      crossSchemaFks: "false"   # the other services' schemas are not part of this test
+
 sutra:
   audit:
-    outbox-relay: false
+    outbox-relay: false   # events stay in the outbox, where the test can see them
+  services:
+    masterdata: http://localhost:1
+    rfq: http://localhost:1
+    quotation: http://localhost:1
+    document: http://localhost:1
+    extraction: http://localhost:1
+    comparison: http://localhost:1
+    approval: http://localhost:1
+    audit: http://localhost:1
+
 logging:
   level:
     "[com.sutra]": WARN

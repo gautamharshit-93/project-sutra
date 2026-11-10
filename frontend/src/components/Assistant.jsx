@@ -16,7 +16,7 @@ import NewRfqModal from './NewRfqModal.jsx';
  * this browser tab only (sessionStorage); the server keeps no chat history.
  */
 const AssistantContext = createContext({ open: false, setOpen: () => {}, available: false });
-export const useAssistant = () => useContext(AssistantContext);
+const useAssistant = () => useContext(AssistantContext);
 
 const STORE_KEY = 'sutra.assistant.chat';
 const MAX_HISTORY = 12;

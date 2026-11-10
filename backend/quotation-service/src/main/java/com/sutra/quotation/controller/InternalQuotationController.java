@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -25,6 +26,7 @@ import java.util.Map;
 
 /** Quotation data and reading results for the other services (service tokens only). */
 @RestController
+@RequestMapping("/internal")
 public class InternalQuotationController {
 
     private final QuotationService quotations;
@@ -40,12 +42,12 @@ public class InternalQuotationController {
 
     // ---------- the extraction service ----------
 
-    @PostMapping("/internal/quotations/{id}/extraction/claim")
+    @PostMapping("/quotations/{id}/extraction/claim")
     public ExtractionWork claim(@PathVariable Long id) {
         return extraction.claim(id);
     }
 
-    @PostMapping("/internal/quotations/{id}/extraction/result")
+    @PostMapping("/quotations/{id}/extraction/result")
     public ResponseEntity<Void> result(@PathVariable Long id, @RequestBody ExtractionOutcome outcome) {
         extraction.receive(id, outcome);
         return ResponseEntity.noContent().build();
@@ -53,12 +55,12 @@ public class InternalQuotationController {
 
     // ---------- the RFQ service ----------
 
-    @GetMapping("/internal/rfqs/{rfqId}/quotation-usage")
+    @GetMapping("/rfqs/{rfqId}/quotation-usage")
     public RfqQuotationUsage usageForRfq(@PathVariable Long rfqId) {
         return quotations.usageForRfq(rfqId);
     }
 
-    @PostMapping("/internal/rfqs/{rfqId}/revalidate")
+    @PostMapping("/rfqs/{rfqId}/revalidate")
     public ResponseEntity<Void> revalidate(@PathVariable Long rfqId) {
         quotations.revalidateForRfq(rfqId);
         return ResponseEntity.noContent().build();
@@ -67,20 +69,20 @@ public class InternalQuotationController {
     // ---------- comparison and approval ----------
 
     /** Every quotation of the RFQ, in full (the comparison service compares the ready ones). */
-    @GetMapping("/internal/rfqs/{rfqId}/quotations")
+    @GetMapping("/rfqs/{rfqId}/quotations")
     @Transactional(readOnly = true)
     public List<QuotationResponse> forRfq(@PathVariable Long rfqId) {
         return repository.findByPurchaseRequestIdOrderByIdAsc(rfqId).stream().map(quotations::toResponse).toList();
     }
 
-    @GetMapping("/internal/quotations/{id}")
+    @GetMapping("/quotations/{id}")
     @Transactional(readOnly = true)
     public QuotationResponse get(@PathVariable Long id) {
         return quotations.toResponse(quotations.find(id));
     }
 
     /** Current versions (optimistic-lock counters), to tell whether a saved comparison is stale. */
-    @GetMapping("/internal/quotations/versions")
+    @GetMapping("/quotations/versions")
     @Transactional(readOnly = true)
     public Map<Long, Long> versions(@RequestParam List<Long> ids) {
         Map<Long, Long> versions = new LinkedHashMap<>();
@@ -90,7 +92,7 @@ public class InternalQuotationController {
 
     // ---------- reporting, master data and users ----------
 
-    @GetMapping("/internal/quotations/stats")
+    @GetMapping("/quotations/stats")
     @Transactional(readOnly = true)
     public StatusCounts stats() {
         Map<String, Long> counts = new LinkedHashMap<>();
@@ -101,14 +103,14 @@ public class InternalQuotationController {
     }
 
     /** Of the given RFQs, those with at least one quotation ready to compare (menu badges). */
-    @GetMapping("/internal/rfqs/with-ready-quotations")
+    @GetMapping("/rfqs/with-ready-quotations")
     @Transactional(readOnly = true)
     public List<Long> withReadyQuotations(@RequestParam List<Long> rfqIds) {
         return rfqIds.isEmpty() ? List.of() : repository.findRfqIdsWithReadyQuotations(rfqIds);
     }
 
     /** A vendor's quotations and their RFQs (menu badges). */
-    @GetMapping("/internal/vendors/{vendorId}/quotation-refs")
+    @GetMapping("/vendors/{vendorId}/quotation-refs")
     @Transactional(readOnly = true)
     public List<com.sutra.api.internal.InternalContracts.QuotationRef> quotationsOf(@PathVariable Long vendorId) {
         return repository.findByVendorIdOrderByIdDesc(vendorId).stream()
@@ -117,7 +119,7 @@ public class InternalQuotationController {
     }
 
     /** {@code kind}: vendors or users. */
-    @GetMapping("/internal/usage/{kind}/{id}")
+    @GetMapping("/usage/{kind}/{id}")
     @Transactional(readOnly = true)
     public ResponseEntity<Usage> usage(@PathVariable String kind, @PathVariable Long id) {
         return switch (kind) {
@@ -128,7 +130,7 @@ public class InternalQuotationController {
     }
 
     /** An RFQ's quotations as its quotation list shows them (reporting: the assistant). */
-    @GetMapping("/internal/rfqs/{rfqId}/quotation-summaries")
+    @GetMapping("/rfqs/{rfqId}/quotation-summaries")
     @Transactional(readOnly = true)
     public List<com.sutra.api.quotation.QuotationResponses.QuotationSummary> summaries(@PathVariable Long rfqId) {
         return quotations.listForRequest(rfqId);

@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { comparisonResult } from '../test/fixtures.js';
 import { comparisonToCsv } from '../utils/comparisonCsv.js';
 import ComparisonMatrix from './ComparisonMatrix.jsx';
-import { GradeDetails } from './Grade.jsx';
 import { ToastProvider } from './Toast.jsx';
 
 vi.mock('../api/endpoints.js', () => ({
@@ -23,26 +22,6 @@ function report(score, grade, rules = [
 ]) {
   return { score, grade, rules };
 }
-
-describe('GradeDetails', () => {
-  it('shows the letter and score, and explains it rule by rule on request', async () => {
-    render(<GradeDetails report={report(90, 'A')} />);
-
-    expect(screen.getByText('A')).toHaveClass('badge-success');
-    expect(screen.queryByText('Warranty')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'How is this graded?' }));
-
-    const warranty = screen.getByText('Warranty').closest('tr');
-    expect(warranty).toHaveClass('rule-short');
-    expect(warranty).toHaveTextContent('5 / 10');
-    expect(warranty).toHaveTextContent('UPS warranty not specified');
-  });
-
-  it('renders nothing without a report', () => {
-    const { container } = render(<GradeDetails report={null} />);
-    expect(container).toBeEmptyDOMElement();
-  });
-});
 
 describe('ComparisonMatrix advisory grade', () => {
   const graded = {

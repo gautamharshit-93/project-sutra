@@ -1,6 +1,5 @@
 package com.sutra.auth.service.impl;
 
-import com.sutra.auth.service.impl.UserServiceImpl;
 import com.sutra.common.audit.AuditService;
 
 import static org.assertj.core.api.Assertions.assertThat;

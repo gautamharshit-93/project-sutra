@@ -427,8 +427,6 @@ a.kpi:hover { text-decoration: none; box-shadow: var(--shadow-lg); }
 /* ---------- grades and engine cross-check ---------- */
 .grade-badge { font-size: .8rem; }
 .grade-score { font-weight: 400; opacity: .85; margin-left: .15rem; }
-.grade-details { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.grade-details .grade-rules { flex-basis: 100%; }
 .grade-rules td:first-child { white-space: nowrap; }
 .grade-rules .rule-short td:nth-child(2) { color: var(--warning); font-weight: 600; }
 .quality { border-top: 1px solid var(--border); margin-top: .75rem; padding-top: .6rem; display: flex; flex-direction: column; gap: .35rem; }

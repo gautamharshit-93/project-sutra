@@ -189,7 +189,7 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     private static Pageable pageable(int page, int size) {
         return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200),
-                Sort.by(Sort.Direction.DESC, "performedAt", "id"));
+                Sort.by(Sort.Direction.DESC, AuditLog::getPerformedAt, AuditLog::getId));
     }
 
     private static String blankToNull(String s) {

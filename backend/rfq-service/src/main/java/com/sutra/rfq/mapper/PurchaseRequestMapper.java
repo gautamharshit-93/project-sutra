@@ -6,7 +6,6 @@ import com.sutra.api.rfq.PurchaseRequestResponses.RequestItemResponse;
 import com.sutra.rfq.entity.PurchaseRequest;
 import com.sutra.rfq.entity.RequestItem;
 
-
 /** Maps this service's entities to the API records of {@code PurchaseRequestResponses}. */
 public final class PurchaseRequestMapper {
 

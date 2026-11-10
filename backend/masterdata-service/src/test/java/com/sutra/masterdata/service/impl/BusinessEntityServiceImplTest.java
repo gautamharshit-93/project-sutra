@@ -1,6 +1,5 @@
 package com.sutra.masterdata.service.impl;
 
-import com.sutra.masterdata.service.impl.BusinessEntityServiceImpl;
 import com.sutra.common.audit.AuditService;
 
 import static org.assertj.core.api.Assertions.assertThat;

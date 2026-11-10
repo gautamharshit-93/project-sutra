@@ -8,19 +8,35 @@ records the award with a full audit trail. AI reads; the backend calculates; peo
 ```
 frontend/   React 18 + Vite UI                                  http://localhost:5173
 backend/    Java 17, Spring Boot 4.1 microservices              gateway http://localhost:8080
-            gateway, auth-service, masterdata-service, procurement-service, audit-service, sutra-common
+            gateway + auth, masterdata, rfq, quotation, document, extraction, comparison, approval,
+            reporting and audit services; shared libraries sutra-api (contracts) and sutra-common
 database/   PostgreSQL 18: one schema per service (Flyway migrations) + setup scripts
 ai/         Python 3.12 FastAPI document service                http://localhost:8000
             test-data/  test packs, scripts/  acceptance test
-docs/       ARCHITECTURE.md (diagrams, ER model), SPEC_COMPLIANCE.md, ACCEPTANCE_RESULTS.md,
-            SUTRA_PROJECT_GUIDE.md (full project explanation and viva guide),
-            SUTRA_ARCHITECTURE_DIAGRAMS.md + diagrams/ (six Mermaid diagrams: architecture, entities, workflow,
-            request flow, comparison, status lifecycles)
+docs/       SUTRA_PROJECT_GUIDE.md (full project explanation and viva guide), SPEC_COMPLIANCE.md,
+            ACCEPTANCE_RESULTS.md, diagrams/system-architecture.mmd (Mermaid system diagram)
 start-all.ps1 / stop-all.ps1   start or stop every service
 ```
 
 Exact, verified-compatible versions of every component are in [VERSIONS.md](VERSIONS.md). How the parts fit together,
-with diagrams and the database model, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+the services, the database model and how they stay consistent are explained in
+[docs/SUTRA_PROJECT_GUIDE.md](docs/SUTRA_PROJECT_GUIDE.md); the system diagram is
+[docs/diagrams/system-architecture.mmd](docs/diagrams/system-architecture.mmd).
+
+| Port | Service | Owns |
+|------|---------|------|
+| 8080 | gateway | routing, JWT check, CORS, sign-in rate limit, correlation id |
+| 8081 | auth-service | users, roles, sign-in, vendor sign-ups |
+| 8082 | masterdata-service | entities, sub-entities, customers, vendors |
+| 8083 | rfq-service | RFQs and their items |
+| 8084 | audit-service | hash-chained audit log (`GET /api/audit-logs/verify`) |
+| 8085 | quotation-service | quotations, lines, review notes, vendor portal |
+| 8086 | document-service | original files (content-checked, stored as BYTEA) |
+| 8087 | extraction-service | reading jobs (OCR, Groq, rule-based reader), RFQ drafts, the AI |
+| 8088 | comparison-service | versioned comparisons, ranking, vendor grade |
+| 8089 | approval-service | award / reject decisions |
+| 8090 | reporting-service | dashboard, menu badges, award summary PDF, assistant (no database) |
+| 8000 | Python document reader | file to text, rule-based reader, matcher |
 
 ## Roles
 
@@ -84,8 +100,11 @@ cd frontend; npm install; cd ..
 .\stop-all.ps1
 ```
 
-Each service applies its own schema from `database/<service>/` with Flyway on start; `start-all.ps1` starts master
-data first, then auth, then the rest, because the cross-schema foreign keys need the referenced tables. On an empty
+Each service applies its own schema with Flyway on start (`src/main/resources/db/migration` in each service);
+`start-all.ps1` starts them in foreign-key order (master data, auth, document, RFQ, quotation, comparison, approval;
+audit, extraction, reporting and the gateway at once), each as its built jar in a small JVM. A database from the
+single procurement service of earlier versions is migrated in place: its tables are moved to the new schemas with
+their data; `database/scripts/03_drop_legacy_procurement_schema.sql` then removes the empty `procurement` schema. On an empty
 database the auth service creates the administrator **admin / Admin@123**, and the app makes that administrator choose
 a new password at the first sign-in. To empty a database again, stop the services and run
 `database/scripts/02_reset_database.sql` (take a `pg_dump` backup first).
@@ -115,7 +134,9 @@ ai\.venv\Scripts\python ai\scripts\acceptance_test.py     # writes docs/ACCEPTAN
 | `SUTRA_ADMIN_PASSWORD` | `Admin@123` | Start-up administrator password (empty database only); must be changed at first sign-in |
 | `SUTRA_PUBLIC_RATE_LIMIT` | `20` | Sign-in and vendor sign-up requests per minute from one IP address |
 | `CROSS_SCHEMA_FKS` | `true` | Foreign keys between the services' schemas (off only where one schema is tested alone) |
-| `AI_SERVICE_URL` | `http://localhost:8000` | Python document service |
+| `AI_SERVICE_URL` | `http://localhost:8000` | Python document reader (used by extraction-service) |
+| `<SERVICE>_URL` / `<SERVICE>_PORT` | see the port table | Where each service listens (`RFQ_URL`, `QUOTATION_PORT`, ...); `start-all.ps1` sets them all |
+| `SUTRA_ORPHAN_AFTER_MINUTES` | `60` | document-service removes uploads never attached to a quotation after this long |
 | `SUTRA_MAX_FILE_BYTES` | 20 MB | Upload limit |
 | `CORS_ORIGINS` | `http://localhost:5173` | Allowed browser origins |
 
@@ -127,10 +148,10 @@ cd ai;       .\.venv\Scripts\python -m pytest       # file-to-text parsers, matc
 cd frontend; npm test                               # Vitest + React Testing Library
 ```
 
-246 backend tests, 38 Python tests, 54 frontend tests, and 75 end-to-end acceptance checks. Service tests mock the
-repositories, the other services and Groq, so business logic is tested without a database or network. The
-procurement integration tests use the `sutra_test` database (the procurement schema is wiped and rebuilt on each
-run); `DocumentServiceContractIntegrationTest` uses the real Python service and skips itself when it is not running;
+256 backend tests (every service, including PostgreSQL integration tests for the RFQ and quotation services), 38 Python tests, 54 frontend tests, and 75 end-to-end acceptance checks. Service
+tests mock the repositories, the other services (their clients) and Groq, so business logic is tested without a
+database or network; the acceptance test runs every service together on the `sutra_test` database.
+`PythonReaderContractIntegrationTest` uses the real Python service and skips itself when it is not running;
 `PdfOcrReaderTest` runs the real Tesseract and skips itself when it is not installed. No test calls a real AI API.
 
 How each requirement of the specification is met, with the code that does it: [docs/SPEC_COMPLIANCE.md](docs/SPEC_COMPLIANCE.md).

@@ -1,7 +1,6 @@
 package com.sutra.quotation.exception;
 
 import com.sutra.common.error.ResourceNotFoundException;
-import com.sutra.quotation.entity.Quotation;
 
 /** A quotation does not exist. */
 public class QuotationNotFoundException extends ResourceNotFoundException {

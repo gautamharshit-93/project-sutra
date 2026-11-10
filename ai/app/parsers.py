@@ -28,10 +28,6 @@ class Document:
                 parts.append(f"[Table {number}]\n" + "\n".join(rows))
         return "\n\n".join(parts).strip()
 
-    @property
-    def char_count(self) -> int:
-        return len(self.as_text())
-
 
 def _cell_text(cell) -> str:
     if cell is None:

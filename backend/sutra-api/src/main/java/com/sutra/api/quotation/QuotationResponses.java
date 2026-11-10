@@ -1,6 +1,5 @@
 package com.sutra.api.quotation;
 
-import com.sutra.api.comparison.GradeReport;
 import com.sutra.api.enums.ExtractionSource;
 import com.sutra.api.enums.FileFormat;
 import com.sutra.api.enums.FlagSeverity;

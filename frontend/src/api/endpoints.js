@@ -165,7 +165,6 @@ export const reportingApi = {
   badges: () => data(http.get('/dashboard/badges')),
   /** Health of every service behind the gateway. */
   services: () => data(http.get('/system/services')),
-  comparison: (id) => data(http.get(`/comparisons/${id}`)),
   auditLogs: (params) => data(http.get('/audit-logs', { params })),
 };
 

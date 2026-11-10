@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sutra.common.security.RoleName;
 import com.sutra.api.rules.FlagCodes;
-import com.sutra.quotation.service.internal.QuotationCalculator;
-import com.sutra.quotation.service.internal.QuotationValidator;
 import com.sutra.quotation.entity.Quotation;
 import com.sutra.quotation.entity.QuotationFlag;
 import com.sutra.quotation.entity.UserRef;

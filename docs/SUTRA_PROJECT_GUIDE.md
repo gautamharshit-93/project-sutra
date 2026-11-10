@@ -4,7 +4,7 @@
 
 ## How to use this guide
 
-This guide explains SUTRA from the simplest idea down to the code, so you can present it and answer viva questions yourself. It is based only on the project as it stands: the source code in `frontend/`, `backend/`, `ai/` and `database/`, plus `README.md`, `docs/ARCHITECTURE.md`, `docs/SPEC_COMPLIANCE.md` and `docs/SUTRA_ARCHITECTURE_DIAGRAMS.md`.
+This guide explains SUTRA from the simplest idea down to the code, so you can present it and answer viva questions yourself. It is based only on the project as it stands: the source code in `frontend/`, `backend/`, `ai/` and `database/`, plus `README.md`, `docs/SPEC_COMPLIANCE.md` and `docs/diagrams/system-architecture.mmd`.
 
 - **Implemented** means the code exists and is tested.
 - **Not implemented** means it is not in the code; it is only a recommendation.
@@ -176,37 +176,41 @@ Browser (React 18 + Vite, :5173)
         ▼
 Gateway (:8080)  — GatewayFilter: block /internal, verify JWT, user still active?
         │          PublicEndpointRateLimiter: 20 sign-in/sign-up per minute per IP
-        │          RouteTable + ProxyController: forward by path
-        ├── auth-service        :8081  users, roles, sign-in, vendor sign-ups      schema auth
-        ├── masterdata-service  :8082  entities, sub-entities, customers, vendors  schema masterdata
-        ├── procurement-service :8083  RFQs, quotations, reading, comparison,      schema procurement
-        │                              award, assistant, PDF
+        │          CorrelationIdFilter: X-Correlation-Id on every request
+        │          RouteTable + ProxyController: forward by path (first match wins)
+        ├── auth-service        :8081  users, roles, sign-in, vendor sign-ups          schema auth
+        ├── masterdata-service  :8082  entities, sub-entities, customers, vendors      schema masterdata
+        ├── rfq-service         :8083  RFQs and their items                            schema rfq
+        ├── quotation-service   :8085  quotations, lines, notes, vendor portal         schema quotation
+        ├── document-service    :8086  original files (content check, BYTEA)           schema document
+        ├── extraction-service  :8087  reading jobs, RFQ drafts, the AI                schema extraction
         │       ├── Python FastAPI :8000 (file → text, rule reader, matcher)
         │       ├── Tesseract OCR (scanned PDFs)
-        │       └── Groq API (AI reading, assistant)
-        └── audit-service       :8084  audit log                                    schema audit
-All services share the library sutra-common (security, errors, audit outbox, helpers).
+        │       └── Groq API (AI reading, assistant answers)
+        ├── comparison-service  :8088  versioned comparisons, ranking, vendor grade    schema comparison
+        ├── approval-service    :8089  award / reject decisions                        schema approval
+        ├── reporting-service   :8090  dashboard, badges, award PDF, assistant         (no database)
+        └── audit-service       :8084  hash-chained audit log                          schema audit
+All services share sutra-api (the contracts: enums, request/response records) and sutra-common
+(security, errors, correlation id, service calls, audit outbox).
 ```
 
 The same picture as a Mermaid diagram (renders on GitHub and in VS Code with a Mermaid extension):
 
 ```mermaid
-flowchart TB
-  B["Browser · React 18 + Vite :5173"] -->|"/api + JWT"| G["Gateway :8080<br/>JWT check · rate limit · routing"]
-  G --> A["auth :8081<br/>users, roles, sign-in, vendor sign-ups"]
-  G --> M["masterdata :8082<br/>entities, customers, vendors"]
-  G --> P["procurement :8083<br/>RFQs, quotations, compare, award, PDF"]
-  G --> U["audit :8084<br/>audit log"]
-  P --> H["AI helpers<br/>Python :8000 · Tesseract OCR · Groq API"]
-  A --> DB[("PostgreSQL 18<br/>schemas auth · masterdata · procurement · audit")]
-  M --> DB
-  P --> DB
-  U --> DB
+flowchart LR
+  B["Browser :5173"] -->|"/api + JWT"| G["Gateway :8080"]
+  G --> S1["auth :8081 · masterdata :8082"]
+  G --> S2["rfq :8083 · quotation :8085<br/>document :8086"]
+  G --> S3["extraction :8087<br/>Python · OCR · Groq"]
+  G --> S4["comparison :8088 · approval :8089<br/>reporting :8090 · audit :8084"]
+  S1 & S2 & S3 & S4 --> DB[("PostgreSQL 18<br/>one schema per service")]
 ```
 
-All six detailed diagrams (architecture, entities, workflow, request flow, comparison, statuses) are in [`SUTRA_ARCHITECTURE_DIAGRAMS.md`](SUTRA_ARCHITECTURE_DIAGRAMS.md).
+The complete system diagram is [`diagrams/system-architecture.mmd`](diagrams/system-architecture.mmd) (paste it into
+mermaid.live).
 
-**Why microservices?** Each service has one responsibility and its own data, can be started, tested and changed alone, and a failure in one (for example the AI) does not stop sign-in or master data. The cost: calls between services over HTTP and more moving parts.
+**Why microservices?** Each service owns one stage of the process and its data, can be started, tested and changed alone, and a failure in one (for example the AI) does not stop sign-in, RFQs or master data. The cost: calls between services over HTTP, and consistency rules for steps that span two services (for example comparison saves its report, then moves the RFQ with a compare-and-set call in the same transaction).
 
 ### Inside one Spring Boot service (layered architecture)
 
@@ -234,7 +238,7 @@ HTTP request
 | DTO response | `response` | Output records, never entities | `QuotationResponse.from(quotation, files)` |
 | Utility | `util` (+ `sutra-common/util`) | Small shared helpers | `TextSimilarity`, `Money`, `Text.blankToNull` |
 | Exception | `exception` + `sutra-common/error` | Named errors → one JSON shape | `QuotationNotFoundException` → 404 |
-| Extra (procurement) | `ai`, `calculation`, `validation`, `security`, `client`, `config` | AI reading, maths, file checks, record access, service clients, settings | `QuotationCalculator`, `RecordAccessPolicy` |
+| Engines and clients | `service/internal`, `client`, `config` | AI reading, maths, file checks, record access, service clients, settings | `QuotationCalculator`, `RecordAccessPolicy` |
 
 ### Exception handling
 
@@ -263,15 +267,22 @@ The repository has four code roots (frontend, backend, ai, database) plus docs a
 PROJECT SUTRA/
 ├── frontend/            React 18 + Vite UI (src/pages, src/components, src/api, src/hooks, src/utils)
 ├── backend/             Maven multi-module (backend/pom.xml)
-│   ├── sutra-common/        shared library: security, errors, audit outbox, helpers
+│   ├── sutra-api/           contracts: status enums, request/response records, internal API records, shared rules
+│   ├── sutra-common/        shared library: security, errors, correlation id, service calls, audit outbox
 │   ├── gateway/             entry point :8080
 │   ├── auth-service/        :8081
 │   ├── masterdata-service/  :8082
-│   ├── procurement-service/ :8083  (the core)
-│   └── audit-service/       :8084
-├── ai/                  Python FastAPI document service + test data + acceptance script
-├── database/            one folder of Flyway SQL migrations per schema + setup scripts
-├── docs/                ARCHITECTURE.md, SPEC_COMPLIANCE.md, ACCEPTANCE_RESULTS.md, SUTRA_ARCHITECTURE_DIAGRAMS.md + diagrams/, this guide
+│   ├── rfq-service/         :8083
+│   ├── audit-service/       :8084
+│   ├── quotation-service/   :8085
+│   ├── document-service/    :8086
+│   ├── extraction-service/  :8087
+│   ├── comparison-service/  :8088
+│   ├── approval-service/    :8089
+│   └── reporting-service/   :8090
+├── ai/                  Python FastAPI document reader + test data + acceptance script
+├── database/            setup, reset and clean-up scripts (each service keeps its migrations in src/main/resources/db/migration)
+├── docs/                SPEC_COMPLIANCE.md, ACCEPTANCE_RESULTS.md, diagrams/system-architecture.mmd, this guide
 └── start-all.ps1 / stop-all.ps1
 ```
 
@@ -313,35 +324,32 @@ PROJECT SUTRA/
 
 | Class | Responsibility |
 | --- | --- |
-| `EntityController` / `BusinessEntityService` | Entities + sub-entities CRUD; `codeFromName` makes unique codes; delete refused while sub-entities, customers or RFQs use it (`UsageClient` asks procurement) |
+| `EntityController` / `BusinessEntityService` | Entities + sub-entities CRUD; `codeFromName` makes unique codes; delete refused while sub-entities, customers or RFQs use it (`UsageClient` asks the RFQ and quotation services) |
 | `CustomerController` / `CustomerService` | Customer CRUD, optional entity link |
 | `VendorController` / `VendorService` | Vendor edit/deactivate/delete; `register` (from an approved sign-up); `updateProfile` |
 | `VendorProfileController` | A vendor reads/updates its own details; the vendor id comes from the token, never the request |
 | `InternalMasterDataController` | Snapshots of entities/vendors for other services; creates the vendor on approval |
 
-### procurement-service (the core)
+### The procurement services (the core, one service per stage)
 
-| Package / class | Responsibility | If it did not exist |
+Every service has the same packages: `controller`, `service` (interfaces), `service/impl`, `service/internal` (engines),
+`client`, `entity`, `repository`, `mapper`, `config`, `exception`.
+
+| Service · class | Responsibility | If it did not exist |
 | --- | --- | --- |
-| `PurchaseRequestController` | RFQs, items, drafts, with-items, upload for a vendor, comparisons, approvals, award summary | No RFQ API |
-| `QuotationController` | Read, edit header/lines, add/remove files, read again, resolve flags | No review/correction |
-| `VendorPortalController` | Vendor's open RFQs, submit, withdraw, own files, badges | Vendors could not submit |
-| `ReportingController` | Dashboard, badges, one comparison report | No dashboard |
-| `AssistantController` | Sahayak status and chat | No assistant |
-| `PurchaseRequestService` | Create, numbering `PR-YYYY-NNNNN`, items, status changes, due-date rules, `createWithItems` (one transaction) | — |
-| `RfqDraftService` | RFQ document/text → draft via Groq + `RfqDraftSchema`; cleans values into warnings | Buyers type everything |
-| `QuotationService` | Upload (one per vendor), file validation + storage, line/header edits, flags, reprocess | — |
-| `QuotationProcessingEvents` / `QuotationProcessingService` | Background reading after commit; stores lines, matches, recalculates, sets status or FAILED with reason | Upload would block for minutes |
-| `QuotationReviewService` | Regenerates validation flags; READY unless an ERROR is open | Status would be wrong after edits |
-| `ComparisonService` / `ComparisonEngine` / `VendorGrader` | Build the versioned report, rank, grade | No comparison |
-| `ApprovalService` | Award/reject rules (reason when not lowest, not own RFQ, quotation must still be ready) | Anyone could award anything |
-| `VendorPortalService` | Vendor view, due date check, withdraw rules, outcome | — |
-| `BadgeService`, `DashboardService`, `AwardSummaryService`, `AssistantService` | Menu counts, KPIs, PDF (PDFBox), chat with Groq | Nice-to-have features missing |
-| `ai/*` | `ExtractionEngines` (order + fallback), `GroqQuotationExtractor`, `RulesQuotationExtractor`, `GroqClient`, `PdfOcrReader`, `AiServiceClient`, `HybridItemMatcher`, `ExtractionSchema` | No automatic reading |
-| `calculation/*` | `QuotationCalculator` (BigDecimal, HALF_UP), `QuotationValidator`, `TermsCheck`, `FlagCodes`, `GradeReport` | Totals trusted from documents |
-| `validation/QuotationFileValidator` | Extension + magic bytes + Office package + size | Fake/corrupt files stored |
-| `security/RecordAccessPolicy` | A buyer changes only RFQs they raised; admin any | Buyers could change each other's RFQs |
-| `client/MasterDataClient` | Calls masterdata `/internal` for entity/vendor snapshots | No validation of references |
+| rfq · `PurchaseRequestController` / `PurchaseRequestService` | RFQs and items: numbering `PR-YYYY-NNNNN`, due-date rules, `createWithItems` (one transaction), status changes; `applyStatusChange` for comparison and approval (compare-and-set) | No RFQs |
+| rfq · `RecordAccessPolicy` | A buyer changes only RFQs they raised; admin any | Buyers could change each other's RFQs |
+| quotation · `QuotationService` / `QuotationController` | Upload (one per vendor), duplicate checks, header and line edits, flags, read again | No review or correction |
+| quotation · `VendorPortalService` / `VendorPortalController` | Vendor view, due date check, submit, withdraw rules, outcome | Vendors could not submit |
+| quotation · `ExtractionResultService` | Claims a quotation for reading; stores the result: lines, matches, recalculation, flags, status | Readings would never be saved |
+| quotation · `QuotationCalculator`, `QuotationValidator`, `QuotationReviewService` | BigDecimal maths; checks against the RFQ; READY unless an ERROR is open | Totals trusted from documents |
+| document · `DocumentService`, `FileContentValidator`, `OrphanDocumentCleanupJob` | Extension + magic bytes + Office structure + size; stores bytes; removes abandoned uploads | Fake or corrupt files stored |
+| extraction · `ExtractionService` (jobs), `ExtractionEngines`, `GroqQuotationExtractor`, `RulesQuotationExtractor`, `PdfOcrReader`, `HybridItemMatcher` | Reading as a background job (202 + status URL), Groq first and rules as backup, item matching | No automatic reading |
+| extraction · `RfqDraftService` | RFQ document or text → draft via Groq; cleans values into warnings | Buyers type everything |
+| comparison · `ComparisonService`, `ComparisonEngine`, `VendorGrader` | Versioned report, ranking of complete quotations, advisory grade | No comparison |
+| approval · `ApprovalService` | Award/reject rules (reason when not lowest, not own RFQ, latest and current report, quotation still ready) | Anyone could award anything |
+| reporting · `DashboardService`, `BadgeService`, `AwardSummaryService`, `AssistantService` | Dashboard, menu counts, PDF (PDFBox), Sahayak, all read through `PlatformClient` | Nice-to-have features missing |
+| every service · `*Client` + `ServiceCall` | Calls another service's `/internal` API with a service token and the correlation id; its 4xx errors come back unchanged | Services could not work together |
 
 ### audit-service, Python service, frontend
 
@@ -354,7 +362,7 @@ PROJECT SUTRA/
 ```
 frontend pages → api/endpoints.js → gateway → *Controller → *Service → *Repository → entity → PostgreSQL
                                                      │
-                                                     ├→ calculation / ai / validation / security (procurement)
+                                                     ├→ service/internal engines (calculator, validator, engines, matcher)
                                                      ├→ *Client → other service /internal/**
                                                      └→ sutra-common (AuditService, CurrentUserProvider, exceptions)
 ```
@@ -385,15 +393,15 @@ The database is **PostgreSQL 18** with **22 tables in 4 schemas** (one per servi
 | masterdata | `sub_entity` | Plant/department of an entity | `id` | `entity_id` → business_entity (RESTRICT) | unique (`entity_id`, `code`) |
 | masterdata | `customer` | End client the goods are for | `id` | `entity_id` → business_entity (optional) | unique code, email and phone format |
 | masterdata | `vendor` | Supplier | `id` | — | unique code, email and phone format |
-| procurement | `purchase_request` | The RFQ header | `id` | entity, sub-entity, customer (x-schema), `requested_by_id` → app_user (x-schema) | unique `request_number`; status list; currency `^[A-Z]{3}$`; `quotations_due <= required_by` |
-| procurement | `request_item` | One requested line | `id` | → purchase_request (CASCADE) | unique (RFQ, line_number); quantity > 0 |
-| procurement | `quotation` | One vendor's offer for one RFQ | `id` | → purchase_request; `vendor_id` → vendor (x-schema); `uploaded_by_id` → app_user | **unique (RFQ, vendor)**; status list; confidence 0–1; `valid_until >= quotation_date`; totals ≥ 0 |
-| procurement | `quotation_file` | Original file bytes | `id` | → quotation (CASCADE) | format in PDF/XLSX/XLS/DOCX; `size_bytes = octet_length(content)` |
-| procurement | `quotation_item` | One extracted/corrected quoted line | `id` | → quotation (CASCADE); `request_item_id` → request_item (SET NULL) | price ≥ 0; discount and tax % 0–100; confidences 0–1 |
-| procurement | `quotation_flag` | A note to check (INFO/WARNING/ERROR) | `id` | → quotation, optional → quotation_item; `resolved_by_id` → app_user | severity list; `resolved = (resolved_at IS NOT NULL)` |
-| procurement | `comparison_report` | One version of the comparison | `id` | → purchase_request; `generated_by_id` → app_user | unique (RFQ, `report_version`); version > 0 |
-| procurement | `comparison_quotation` | Which quotation version was in which report, its rank and total | (`comparison_report_id`, `quotation_id`) | → comparison_report (CASCADE), → quotation | composite PK |
-| procurement | `approval` | The decision | `id` | → purchase_request, → comparison_report, `selected_quotation_id` → quotation, `decided_by_id` → app_user | decision in APPROVED/REJECTED; shape rule (approved needs a quotation) |
+| rfq | `purchase_request` | The RFQ header | `id` | entity, sub-entity, customer (x-schema), `requested_by_id` → app_user (x-schema) | unique `request_number`; status list; currency `^[A-Z]{3}$`; `quotations_due <= required_by` |
+| rfq | `request_item` | One requested line | `id` | → purchase_request (CASCADE) | unique (RFQ, line_number); quantity > 0 |
+| quotation | `quotation` | One vendor's offer for one RFQ | `id` | → purchase_request; `vendor_id` → vendor (x-schema); `uploaded_by_id` → app_user | **unique (RFQ, vendor)**; status list; confidence 0–1; `valid_until >= quotation_date`; totals ≥ 0 |
+| quotation | `quotation_file` | Reference to an original file (name, format, size, SHA-256, `document_id`) | `id` | → quotation (CASCADE) | format in PDF/XLSX/XLS/DOCX; `size_bytes = octet_length(content)` |
+| quotation | `quotation_item` | One extracted/corrected quoted line | `id` | → quotation (CASCADE); `request_item_id` → request_item (SET NULL) | price ≥ 0; discount and tax % 0–100; confidences 0–1 |
+| quotation | `quotation_flag` | A note to check (INFO/WARNING/ERROR) | `id` | → quotation, optional → quotation_item; `resolved_by_id` → app_user | severity list; `resolved = (resolved_at IS NOT NULL)` |
+| comparison | `comparison_report` | One version of the comparison | `id` | → purchase_request; `generated_by_id` → app_user | unique (RFQ, `report_version`); version > 0 |
+| comparison | `comparison_quotation` | Which quotation version was in which report, its rank and total | (`comparison_report_id`, `quotation_id`) | → comparison_report (CASCADE), → quotation | composite PK |
+| approval | `approval` | The decision | `id` | → purchase_request, → comparison_report, `selected_quotation_id` → quotation, `decided_by_id` → app_user | decision in APPROVED/REJECTED; shape rule (approved needs a quotation) |
 | audit | `audit_log` | Every recorded change | `id` | — (keeps names, not keys) | unique `event_id` |
 | every schema | `audit_outbox` (×4) | Events waiting for delivery | `id` | — | unique `event_id` |
 
@@ -405,16 +413,16 @@ The database is **PostgreSQL 18** with **22 tables in 4 schemas** (one per servi
 | User ↔ VendorSignup | **One-to-One** (`@OneToOne`) | auth | A waiting sign-up belongs to exactly one login and disappears on approval |
 | Entity → SubEntity | **One-to-Many** / Many-to-One (`@OneToMany(mappedBy="entity")`, `@ManyToOne`) | masterdata | One company has several plants; a plant has one company |
 | Entity → Customer | One-to-Many, optional | masterdata | A customer may belong to one entity |
-| RFQ → RequestItem | **One-to-Many** (cascade, orphan removal) | procurement | Items exist only inside their RFQ |
-| RFQ → Quotation | One-to-Many | procurement | Many vendors quote on one RFQ; unique (RFQ, vendor) makes it one per vendor |
-| Vendor → Quotation | One-to-Many (x-schema FK) | masterdata → procurement | A vendor quotes on many RFQs |
-| Quotation → QuotationFile / QuotationItem / QuotationFlag | One-to-Many | procurement | One offer can have several files and lines and notes |
-| QuotationItem → RequestItem | **Many-to-One** (optional) | procurement | Each quoted line is matched to at most one requested line |
-| ComparisonReport ↔ Quotation | **Many-to-Many** through `comparison_quotation` (`@EmbeddedId` composite key) | procurement | A report compares many quotations, a quotation can appear in several report versions; the link row also stores rank, total and the quotation version |
-| RFQ → Approval | One-to-Many | procurement | History of decisions; the latest counts |
-| Approval → Quotation | Many-to-One | procurement | The awarded offer |
+| RFQ → RequestItem | **One-to-Many** (cascade, orphan removal) | rfq | Items exist only inside their RFQ |
+| RFQ → Quotation | One-to-Many | rfq → quotation | Many vendors quote on one RFQ; unique (RFQ, vendor) makes it one per vendor |
+| Vendor → Quotation | One-to-Many (x-schema FK) | masterdata → quotation | A vendor quotes on many RFQs |
+| Quotation → QuotationFile / QuotationItem / QuotationFlag | One-to-Many | quotation | One offer can have several files and lines and notes |
+| QuotationItem → RequestItem | **Many-to-One** (optional) | quotation → rfq | Each quoted line is matched to at most one requested line |
+| ComparisonReport ↔ Quotation | **Many-to-Many** through `comparison_quotation` (`@EmbeddedId` composite key) | comparison → quotation | A report compares many quotations, a quotation can appear in several report versions; the link row also stores rank, total and the quotation version |
+| RFQ → Approval | One-to-Many | rfq → approval | History of decisions; the latest counts |
+| Approval → Quotation | Many-to-One | approval → quotation | The awarded offer |
 
-**Across services**, the Java code does not join entities from another schema. It stores an `@Embeddable` snapshot (`NamedRef` = id + name, `UserRef` = id + username), so a page never needs another service just to show a name. The database still enforces those ids with real cross-schema foreign keys (`ON DELETE RESTRICT`), added by migrations `masterdata/V2`, `auth/V4`, `procurement/V4` through a Flyway placeholder `crossSchemaFks`.
+**Across services**, the Java code does not join entities from another schema. It stores an `@Embeddable` snapshot (`NamedRef` = id + name, `UserRef` = id + username), so a page never needs another service just to show a name. The database still enforces those ids with real cross-schema foreign keys (`ON DELETE RESTRICT`), added by each service's migrations (21 between schemas) through a Flyway placeholder `crossSchemaFks`.
 
 ### Indexes
 
@@ -439,7 +447,7 @@ business_entity ──< sub_entity            app_user >── user_role ──<
                  └──< approval >── comparison_report, quotation (selected)
 ```
 
-(`──<` = one-to-many.) The complete ER diagram is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`SUTRA_ARCHITECTURE_DIAGRAMS.md`](SUTRA_ARCHITECTURE_DIAGRAMS.md) (diagram D2).
+(`──<` = one-to-many.) Each service's tables are created by the Flyway migrations in its `src/main/resources/db/migration`.
 
 **Key takeaways**
 
@@ -510,7 +518,7 @@ SUTRA uses **Spring Boot 4.1** (Java 17) in all five services; the table maps ea
 | Global exception handling | `@RestControllerAdvice` + `@ExceptionHandler` | `GlobalExceptionHandler` (12+ handlers) → `ApiError` |
 | Security | Spring Security with a stateless JWT filter; `@EnableMethodSecurity` + `@PreAuthorize` | `@PreAuthorize(Roles.BUYER)` on entity create; `hasAnyRole('ADMIN','APPROVER')` on awards |
 | Configuration | `application.yml` + environment variables + typed `@ConfigurationProperties` records | `SutraProperties`, `AuthProperties`, `GatewayProperties`; e.g. `GROQ_API_KEY`, `JWT_SECRET`, `SUTRA_PUBLIC_RATE_LIMIT` |
-| Flyway | Versioned SQL migrations run at start-up | `database/procurement/V1__…` to `V4__…` |
+| Flyway | Versioned SQL migrations run at start-up | each service's `src/main/resources/db/migration` (e.g. `rfq-service` V1, V2) |
 | CORS | Lets a browser page on one origin call another | Handled once in the gateway (`CorsConfig`, allowed origin `http://localhost:5173` via `CORS_ORIGINS`); in development the Vite proxy keeps everything same-origin anyway |
 | Actuator | Health endpoints | `/actuator/health` used by `start-all.ps1` and the gateway's service status page |
 
@@ -548,7 +556,7 @@ All APIs sit under `/api` on the gateway (`http://localhost:8080`), send and rec
 | GET `/vendors[/{id}]`; POST `/vendors` (admin); PUT, DELETE `/vendors/{id}` (buyer, admin) | Staff | Vendor list and maintenance | 422 VENDOR_IN_USE, VENDOR_HAS_LOGINS |
 | GET, PUT `/vendor-profile` | Vendor | Own contact/GST details (vendor id from the token) | 400 bad email/phone |
 
-### RFQs (procurement-service, `/purchase-requests`)
+### RFQs (rfq-service; drafts: extraction, quotations: quotation, comparisons: comparison, approvals: approval, award summary: reporting)
 
 | Method + URL | Who | Purpose and input | Service method → database | Response / main errors |
 | --- | --- | --- | --- | --- |
@@ -597,7 +605,7 @@ All APIs sit under `/api` on the gateway (`http://localhost:8080`), send and rec
 1  Browser    NewRfqModal → purchaseRequestsApi.createWithItems(request, items, open)
               POST /api/purchase-requests/with-items  (Authorization: Bearer <JWT>)
 2  Gateway    GatewayFilter verifies the JWT and that the user is still active (TokenStateCache)
-              RouteTable: /api/purchase-requests/** → procurement-service :8083 (ProxyController)
+              RouteTable: /api/purchase-requests/with-items → rfq-service :8083 (ProxyController)
 3  Filters    RequestIdFilter → JwtAuthenticationFilter builds SutraUserPrincipal
 4  Controller PurchaseRequestController.createWithItems(@Valid @RequestBody NewRfqRequest)
               @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT')") → Bean Validation of every field
@@ -873,7 +881,7 @@ void aSecondQuotationFromTheSameVendorIsRefused() {                 // negative 
 | `DashboardServiceTest` (2), `AuditServiceTest` (2), `AuditLogServiceTest` (3) | Counts; master data down → empty counts not failure; outbox event shape; duplicate delivery harmless | + − |
 | `PdfOcrReaderTest` (2) | Runs **real Tesseract** on a generated scanned page (skips if not installed) | integration |
 | `DocumentServiceContractIntegrationTest` (4) | Calls the **real Python service** (skips if not running) | integration |
-| `ProcurementWorkflowIntegrationTest` (3) | RFQ to award through the vendor portal on **real PostgreSQL** (own schema `procurement_it`); service-token rules | integration |
+| `RfqIntegrationTest` (3), `QuotationIntegrationTest` (1) | RFQ create, open and compare-and-set status changes; a vendor quotation stored, claimed, read and recalculated, on **real PostgreSQL** (own schemas `rfq_it`, `quotation_it`) | integration |
 
 ### Beyond unit tests
 
@@ -904,7 +912,7 @@ This follows the project's own test pack: Axiom Auto Components (entity) buys 5 
 | Front end | Buyer picks the entity, checks items, ticks "Open to vendors", clicks **Create RFQ** → `POST /purchase-requests/with-items` |
 | Service | `createWithItems` in one `@Transactional`: `create` (entity checked via `MasterDataClient`, number `PR-2026-00001`), 5 × `addItem`, `changeStatus(OPEN)`, audit events |
 | Entity / repository | `PurchaseRequest` with 5 `RequestItem` children (cascade) → `PurchaseRequestRepository.save` |
-| Database | INSERT `purchase_request` (status OPEN), 5 × `request_item`, rows in `procurement.audit_outbox`; FKs to `masterdata.business_entity` and `auth.app_user` checked |
+| Database | INSERT `purchase_request` (status OPEN), 5 × `request_item`, rows in `rfq.audit_outbox`; FKs to `masterdata.business_entity` and `auth.app_user` checked |
 
 ### 2. Vendors submit quotations
 
@@ -972,7 +980,7 @@ Aim for about 1 minute per slide.
 | 5 | Project objectives | Store originals; extract automatically; recalculate; compare; recorded human decision; audit | 6 short goal cards | Link each goal to a feature you will demo |
 | 6 | System architecture | Gateway + 5 services + PostgreSQL schemas + Python + Tesseract + Groq | The layered diagram (Layer 4) | "The browser only talks to the gateway; each service owns its data." |
 | 7 | Technology stack | React 18 + Vite; Java 17 + Spring Boot 4.1; PostgreSQL 18 + Flyway; Python FastAPI; PDFBox + Tesseract; Groq; JUnit + Mockito | Logos or a 3-column table | Give one reason for each choice (see Layer 16) |
-| 8 | Database design / ER diagram | 22 tables, 4 schemas, 30 FKs (11 cross-schema), 42 CHECKs | ER diagram from `docs/ARCHITECTURE.md` | Explain RFQ → items, RFQ → quotations → lines/files/flags, report ↔ quotation |
+| 8 | Database design / ER diagram | 22 tables, 4 schemas, 30 FKs (11 cross-schema), 42 CHECKs | Table map above (layer 6) | Explain RFQ → items, RFQ → quotations → lines/files/flags, report ↔ quotation |
 | 9 | Core modules | Users & roles; master data; RFQs; quotations; reading; comparison; approval; audit; assistant | 9 module tiles grouped by service | "Each module maps to one service and one package." |
 | 10 | Complete workflow | 7-step flow, 4 roles | Swim-lane: vendor, buyer, system, manager | Follow the test-pack example from Layer 14 |
 | 11 | Quotation upload and management | Validation by content, BYTEA storage, background reading, correction, confidence | Upload → validate → store → read pipeline | "Original files never change; extracted lines can be corrected and are marked." |
@@ -997,7 +1005,7 @@ Each question has a 30-second answer to say first, and a detailed answer for fol
 
 | Question | 30-second answer | Detailed technical answer |
 | --- | --- | --- |
-| Explain your project. | SUTRA lets buyers post RFQs, vendors upload quotations in any format, the system reads and checks them, compares them side by side, and a manager awards with a recorded reason. | React UI → gateway → 5 Spring Boot services (gateway, auth, masterdata, procurement, audit) on PostgreSQL schemas; Python + Tesseract + Groq read files; Java recalculates totals; approvals and audit are stored. |
+| Explain your project. | SUTRA lets buyers post RFQs, vendors upload quotations in any format, the system reads and checks them, compares them side by side, and a manager awards with a recorded reason. | React UI → gateway → 10 Spring Boot services (auth, masterdata, rfq, quotation, document, extraction, comparison, approval, reporting, audit), one PostgreSQL schema each; Python + Tesseract + Groq read files; Java recalculates totals; approvals and audit are stored. |
 | Explain your architecture. | Microservices behind one gateway; each service has controller, service, repository, entity layers and its own schema. | Gateway verifies JWT, rate-limits sign-in, routes by path. Services call each other via `/internal` with service tokens. Audit uses the outbox pattern. Shared code in `sutra-common`. |
 | Why Spring Boot? | Fast to build production-grade REST services with security, validation, JPA and testing built in. | Auto-configuration, embedded Tomcat, Spring Security with `@PreAuthorize`, Spring Data JPA, Bean Validation, `@Transactional`, `@Async`, Actuator health, first-class JUnit/Mockito support. |
 | Why PostgreSQL? | Reliable relational database with strong constraints, schemas and binary storage. | Schemas per service in one database; CHECK/UNIQUE/FK constraints; `NUMERIC` for money; `BYTEA` for files; JSONB for audit details; expression indexes (`lower(name)`). |
@@ -1037,9 +1045,10 @@ Everything to remember on one page.
 
 ```
 React (:5173) → Gateway (:8080: JWT check, 20/min sign-in limit, routing)
-  → auth :8081 | masterdata :8082 | procurement :8083 | audit :8084   (+ sutra-common)
-  → PostgreSQL 18: schemas auth, masterdata, procurement, audit (Flyway)
-procurement → Python FastAPI :8000 (file→text, rules, matcher) · Tesseract OCR · Groq API
+  → auth :8081 | masterdata :8082 | rfq :8083 | audit :8084 | quotation :8085 | document :8086
+    | extraction :8087 | comparison :8088 | approval :8089 | reporting :8090   (+ sutra-api, sutra-common)
+  → PostgreSQL 18: one schema per service (Flyway in each service)
+extraction → Python FastAPI :8000 (file→text, rules, matcher) · Tesseract OCR · Groq API
 Inside a service: Controller → Service (@Transactional) → Repository (JPA) → Entity → DB
 ```
 

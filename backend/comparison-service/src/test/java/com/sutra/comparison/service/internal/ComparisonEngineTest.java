@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.sutra.api.comparison.ComparisonResult.ItemCell;
 import com.sutra.api.comparison.ComparisonResult.QuotationColumn;
 import com.sutra.common.security.RoleName;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

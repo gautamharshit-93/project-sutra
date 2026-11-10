@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { formatBytes } from '../utils/format.js';
 
 export const ACCEPTED_FILES = '.pdf,.xlsx,.xls,.docx';
-export const MAX_FILES = 10;
+const MAX_FILES = 10;
 
 /**
  * Picks one or more quotation files (PDF, Excel, Word). Files can be added in several rounds and removed again;

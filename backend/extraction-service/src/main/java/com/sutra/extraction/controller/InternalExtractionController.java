@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Groq key and talks to the AI.
  */
 @RestController
+@RequestMapping("/internal")
 public class InternalExtractionController {
 
     private final ExtractionService extractions;
@@ -44,27 +46,27 @@ public class InternalExtractionController {
     }
 
     /** Queues a reading; answers at once with the job and its status URL. */
-    @PostMapping("/internal/extractions")
+    @PostMapping("/extractions")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ExtractionJobResponse submit(@RequestBody ExtractionTask task) {
         return extractions.submit(task);
     }
 
     /** Refuses an engine/model that cannot be used right now (e.g. GROQ without a key); nothing is queued. */
-    @PostMapping("/internal/extractions/check")
+    @PostMapping("/extractions/check")
     public ResponseEntity<Void> check(@RequestBody ExtractionTask task) {
         engines.validate(new ExtractionChoice(task.engine(), task.model()));
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/internal/ai/complete")
+    @PostMapping("/ai/complete")
     public AiCompletion complete(@RequestBody AiCompletionRequest request) {
         GroqClient.Completion c = groq.complete(request.messages(), request.responseFormat(),
                 request.maxOutputTokens(), null);
         return new AiCompletion(c.content(), c.model(), c.inputTokens(), c.outputTokens());
     }
 
-    @GetMapping("/internal/ai/status")
+    @GetMapping("/ai/status")
     public AiStatus status() {
         QuotationExtractor first = engines.firstAvailable(); // the rule-based reader when Groq is not configured
         return new AiStatus(groq.isConfigured(), groq.model(),
@@ -73,7 +75,7 @@ public class InternalExtractionController {
     }
 
     /** An RFQ pasted into the assistant, read into a draft (nothing saved). */
-    @PostMapping("/internal/rfq-drafts/from-text")
+    @PostMapping("/rfq-drafts/from-text")
     public com.sutra.api.rfq.RfqDraftResponses.RfqDraft draftFromText(
             @RequestBody com.sutra.api.rfq.PurchaseRequestRequests.RfqTextRequest request) {
         return drafts.fromText(request.text());

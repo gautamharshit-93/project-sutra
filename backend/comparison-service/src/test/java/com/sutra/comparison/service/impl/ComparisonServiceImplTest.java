@@ -26,7 +26,6 @@ import com.sutra.comparison.service.internal.ComparisonEngine;
 import com.sutra.comparison.support.Fixtures;
 import com.sutra.comparison.support.TestQuotation;
 import com.sutra.comparison.support.TestRfq;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;

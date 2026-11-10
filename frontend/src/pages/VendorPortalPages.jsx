@@ -25,13 +25,13 @@ const OUTCOMES = {
   CLOSED: ['RFQ closed without award', 'neutral'],
 };
 
-export function StageBadge({ stage }) {
+function StageBadge({ stage }) {
   if (!stage) return null;
   const [label, tone] = STAGES[stage] || [stage, 'neutral'];
   return <span className={`badge badge-${tone}`}>{label}</span>;
 }
 
-export function OutcomeBadge({ outcome }) {
+function OutcomeBadge({ outcome }) {
   if (!outcome) return null;
   const [label, tone] = OUTCOMES[outcome] || [outcome, 'neutral'];
   return <span className={`badge badge-${tone}`}>{label}</span>;

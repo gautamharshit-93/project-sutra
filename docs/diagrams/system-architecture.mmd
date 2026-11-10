@@ -1,0 +1,80 @@
+%% SUTRA - complete system architecture (horizontal). Paste into https://mermaid.live
+flowchart LR
+  subgraph USERS["Users · 4 roles"]
+    direction TB
+    ADM["Admin<br/>users · master data · approves vendors"]
+    BUY["Buyer<br/>RFQs · review · compare"]
+    MGR["Manager<br/>award / reject"]
+    VEN["Vendor<br/>self sign-up · portal · submit"]
+  end
+
+  UI["React 18 + Vite :5173<br/>pages · api client · JWT in memory<br/>badges · Sahayak assistant"]
+
+  GW["Gateway :8080<br/>GatewayFilter: JWT + user still active (auth)<br/>blocks /internal/** · rate limit 20/min<br/>CorrelationIdFilter · RouteTable → ProxyController"]
+
+  subgraph SVC["Spring Boot 4.1 microservices · Java 17 · one schema each"]
+    direction TB
+    subgraph ID["Identity & master data"]
+      direction LR
+      AUTH["auth :8081<br/>users · roles · sign-in<br/>vendor sign-ups"]
+      MD["masterdata :8082<br/>entities · sub-entities<br/>customers · vendors"]
+    end
+    subgraph FLOW["Buying flow · internal REST + service JWT"]
+      direction LR
+      RFQ["rfq :8083<br/>RFQs + items<br/>status compare-and-set"]
+      QUO["quotation :8085<br/>quotations · lines · flags<br/>vendor portal · BigDecimal maths"]
+      DOC["document :8086<br/>file checks · BYTEA<br/>orphan clean-up"]
+      EXT["extraction :8087<br/>reading jobs 202 · RFQ drafts<br/>Groq first, rules as backup"]
+      CMP["comparison :8088<br/>versioned reports · ranking<br/>advisory grade"]
+      APR["approval :8089<br/>award / reject rules<br/>one manager decides"]
+      RFQ -.->|"quotations of RFQ"| QUO
+      QUO -.->|"store file"| DOC
+      QUO -.->|"queue reading"| EXT
+      EXT -.->|"file bytes"| DOC
+      QUO -.->|"ready quotations"| CMP
+      CMP -.->|"latest report"| APR
+      APR -.->|"AWARDED / REJECTED"| RFQ
+    end
+    subgraph SIDE["Read side & trace"]
+      direction LR
+      REP["reporting :8090 · no DB<br/>dashboard · badges<br/>award PDF · assistant"]
+      AUD["audit :8084<br/>SHA-256 hash chain<br/>append-only · /verify"]
+    end
+    ID -.->|"vendor accounts · usage checks"| FLOW
+    FLOW -.->|"/internal reads · audit outbox relay"| SIDE
+  end
+
+  LIB["Shared libraries<br/>sutra-api: enums · records · contracts<br/>sutra-common: security · errors · ServiceCall · audit outbox"]
+
+  subgraph READ["Document reading"]
+    direction TB
+    PY["Python FastAPI :8000<br/>file → text · rule reader · matcher"]
+    OCR["Tesseract OCR<br/>scanned PDFs"]
+    GROQ["Groq API<br/>AI reading · assistant"]
+  end
+
+  subgraph DB["PostgreSQL 18 · sutra_db · Flyway per service · 21 cross-schema FKs"]
+    direction TB
+    S1[("auth · masterdata")]
+    S2[("rfq · quotation")]
+    S3[("document · BYTEA files")]
+    S4[("extraction · comparison<br/>approval · audit")]
+  end
+
+  USERS -->|"HTTPS"| UI
+  UI -->|"/api/** + Bearer JWT"| GW
+  GW -->|"route by path"| SVC
+  LIB -.- SVC
+  SVC -->|"extraction-service"| READ
+  SVC ==>|"JPA · own schema"| DB
+
+  classDef actor fill:#000000,stroke:#000000,color:#ffffff
+  classDef edge fill:#ffffff,stroke:#ff0000,stroke-width:2px,color:#000000
+  classDef svc fill:#ff0000,stroke:#000000,color:#ffffff
+  classDef store fill:#ffffff,stroke:#000000,color:#000000
+  classDef lib fill:#ffffff,stroke:#000000,stroke-dasharray:4 3,color:#000000
+  class ADM,BUY,MGR,VEN actor
+  class UI,GW edge
+  class AUTH,MD,RFQ,QUO,DOC,EXT,CMP,APR,REP,AUD svc
+  class S1,S2,S3,S4,PY,OCR,GROQ store
+  class LIB lib

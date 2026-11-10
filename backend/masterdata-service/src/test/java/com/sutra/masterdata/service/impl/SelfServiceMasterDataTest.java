@@ -1,8 +1,6 @@
 package com.sutra.masterdata.service.impl;
 
 import com.sutra.masterdata.service.internal.CodeGenerator;
-import com.sutra.masterdata.service.impl.VendorServiceImpl;
-import com.sutra.masterdata.service.impl.BusinessEntityServiceImpl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;

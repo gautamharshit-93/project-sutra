@@ -42,7 +42,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- No database here; the shared error handler still maps Spring's data-access exceptions -->
+        <!-- No database here; the shared error handler and paging still refer to these Spring classes -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-tx</artifactId>
@@ -50,6 +50,11 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-orm</artifactId>
+        </dependency>
+        <!-- the shared PageResponse can also be built from a Spring Data page -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
         </dependency>
         <!-- PDF rendering (scanned pages for OCR) and PDF writing -->
         <dependency>

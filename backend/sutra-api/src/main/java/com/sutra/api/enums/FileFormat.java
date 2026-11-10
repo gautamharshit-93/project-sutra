@@ -19,10 +19,6 @@ public enum FileFormat {
         this.mimeType = mimeType;
     }
 
-    public String extension() {
-        return extension;
-    }
-
     public String mimeType() {
         return mimeType;
     }

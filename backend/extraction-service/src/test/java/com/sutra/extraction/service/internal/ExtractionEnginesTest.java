@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -160,7 +161,7 @@ class ExtractionEnginesTest {
                 .containsExactlyInAnyOrder(Tuple.tuple(ExtractionEngine.GROQ, false),
                         Tuple.tuple(ExtractionEngine.RULES, true));
         assertThat(engines.describe()).filteredOn(i -> i.engine() == ExtractionEngine.GROQ).first()
-                .extracting(EngineInfo::models).asList()
+                .extracting(EngineInfo::models, InstanceOfAssertFactories.list(String.class))
                 .containsExactly("openai/gpt-oss-120b", "openai/gpt-oss-20b");
     }
 

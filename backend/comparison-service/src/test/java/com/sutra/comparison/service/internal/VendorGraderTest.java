@@ -2,13 +2,10 @@ package com.sutra.comparison.service.internal;
 
 import com.sutra.comparison.support.Fixtures;
 import com.sutra.comparison.support.TestQuotation;
-import com.sutra.comparison.support.TestRfq;
 import com.sutra.api.comparison.GradeReport;
-import com.sutra.api.rules.FlagCodes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sutra.api.comparison.GradeReport.GradeRule;
-import com.sutra.api.enums.FlagSeverity;
 import com.sutra.common.security.RoleName;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;

@@ -7,7 +7,6 @@ import com.sutra.common.web.PageResponse;
 import com.sutra.api.quotation.VendorPortalResponses.RfqDetail;
 import com.sutra.api.quotation.VendorPortalResponses.RfqSummary;
 import com.sutra.api.quotation.VendorPortalResponses.VendorQuotation;
-import com.sutra.quotation.service.impl.VendorPortalServiceImpl;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.springframework.http.ContentDisposition;

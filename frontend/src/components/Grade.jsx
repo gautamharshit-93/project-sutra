@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { formatNumber } from '../utils/format.js';
 
 const GRADE_TONES = { A: 'success', B: 'success', C: 'warning', D: 'warning', F: 'danger' };
@@ -32,17 +31,3 @@ export function GradeRules({ report }) {
   );
 }
 
-/** Badge plus a toggle that reveals the rules behind it. */
-export function GradeDetails({ report, label = 'How is this graded?' }) {
-  const [open, setOpen] = useState(false);
-  if (!report) return null;
-  return (
-    <div className="grade-details">
-      <GradeBadge report={report} />
-      <button type="button" className="btn btn-link small" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {open ? 'Hide rules' : label}
-      </button>
-      {open && <GradeRules report={report} />}
-    </div>
-  );
-}

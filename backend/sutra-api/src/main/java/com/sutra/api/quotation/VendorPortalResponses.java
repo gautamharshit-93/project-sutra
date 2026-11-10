@@ -1,6 +1,5 @@
 package com.sutra.api.quotation;
 
-import com.sutra.api.enums.PurchaseRequestStatus;
 import com.sutra.api.enums.QuotationStatus;
 import com.sutra.api.quotation.QuotationResponses.FileResponse;
 import java.math.BigDecimal;

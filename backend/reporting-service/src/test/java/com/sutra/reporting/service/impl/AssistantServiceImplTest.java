@@ -1,6 +1,5 @@
 package com.sutra.reporting.service.impl;
 
-import com.sutra.reporting.service.AssistantService;
 import com.sutra.api.internal.InternalContracts.AiCompletionRequest;
 import com.sutra.api.internal.InternalContracts.AiCompletion;
 import com.sutra.api.internal.InternalContracts.AiStatus;
@@ -11,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -87,7 +85,6 @@ class AssistantServiceImplTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void answersFromTheSnapshotAndDropsInventedLinks() {
         groqAnswers("{\"reply\":\"Shakti Metals ka quotation review mein hai.\",\"links\":["
                 + "{\"type\":\"QUOTATION\",\"id\":11},{\"type\":\"QUOTATION\",\"id\":999},"

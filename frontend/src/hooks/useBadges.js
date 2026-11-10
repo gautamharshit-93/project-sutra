@@ -14,7 +14,7 @@ function seenOutcomes() {
 }
 
 /** Remembers (in this browser) that the vendor has seen these quotations' outcomes. */
-export function markOutcomesSeen(ids) {
+function markOutcomesSeen(ids) {
   try {
     const seen = seenOutcomes();
     ids.forEach((id) => seen.add(id));

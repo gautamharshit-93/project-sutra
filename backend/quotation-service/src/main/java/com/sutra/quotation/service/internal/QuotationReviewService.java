@@ -2,8 +2,6 @@ package com.sutra.quotation.service.internal;
 
 import com.sutra.api.rfq.PurchaseRequestResponses.PurchaseRequestResponse;
 import com.sutra.api.rules.FlagCodes;
-import com.sutra.quotation.service.internal.FlagDraft;
-import com.sutra.quotation.service.internal.QuotationValidator;
 import com.sutra.quotation.entity.Quotation;
 import com.sutra.quotation.entity.QuotationFlag;
 import com.sutra.api.enums.FlagSeverity;

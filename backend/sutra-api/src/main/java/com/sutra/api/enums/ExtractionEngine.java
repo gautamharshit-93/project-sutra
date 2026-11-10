@@ -1,7 +1,5 @@
 package com.sutra.api.enums;
 
-import com.sutra.api.enums.ExtractionSource;
-
 /**
  * The extraction engine a user asks for when uploading or retrying a quotation. AUTO tries the engines in the
  * configured order ({@code sutra.extraction.engine-order}: Groq, then the rule-based reader) and moves on when

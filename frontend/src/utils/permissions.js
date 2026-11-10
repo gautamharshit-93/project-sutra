@@ -6,7 +6,7 @@
 export const ROLES = ['ADMIN', 'PROCUREMENT', 'APPROVER', 'VENDOR'];
 
 /** What each role is called on screen. */
-export const ROLE_LABELS = {
+const ROLE_LABELS = {
   ADMIN: 'Administrator',
   PROCUREMENT: 'Buyer',
   APPROVER: 'Manager',

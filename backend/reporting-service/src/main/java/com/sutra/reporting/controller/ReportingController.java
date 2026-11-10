@@ -15,10 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** The dashboard, menu badges and the award summary PDF (the gateway routes these paths here). */
 @RestController
+@RequestMapping("/api")
 public class ReportingController {
 
     private final DashboardService dashboard;
@@ -31,26 +33,26 @@ public class ReportingController {
         this.awardSummaries = awardSummaries;
     }
 
-    @GetMapping("/api/dashboard")
+    @GetMapping("/dashboard")
     @PreAuthorize(Roles.STAFF)
     public DashboardResponse dashboard() {
         return dashboard.summary();
     }
 
-    @GetMapping("/api/dashboard/badges")
+    @GetMapping("/dashboard/badges")
     @PreAuthorize(Roles.STAFF)
     public StaffBadges staffBadges() {
         return badges.staff();
     }
 
     /** Menu badges of the vendor portal: open RFQs not quoted on yet, and quotations that have an outcome. */
-    @GetMapping("/api/vendor-portal/badges")
+    @GetMapping("/vendor-portal/badges")
     @PreAuthorize(Roles.VENDOR)
     public VendorBadges vendorBadges() {
         return badges.vendor();
     }
 
-    @GetMapping("/api/purchase-requests/{id}/award-summary")
+    @GetMapping("/purchase-requests/{id}/award-summary")
     @PreAuthorize(Roles.STAFF)
     public ResponseEntity<byte[]> awardSummary(@PathVariable Long id) {
         AwardSummary summary = awardSummaries.summary(id);
